@@ -29,7 +29,7 @@ def get_json_dict_from_dir(
 
         # relative path in the current directory will be stored for compatibility
         json_dict[sample_name] = dict(
-            image_path=relpath(image_file_path), mask_path=relpath(mask_file_path)
+            image_path=image_file_path, mask_path=mask_file_path
         )
     return json_dict
 

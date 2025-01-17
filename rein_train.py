@@ -21,8 +21,9 @@ from cat_sam.datasets.sbu import SBUDataset
 from cat_sam.datasets.transforms import HorizontalFlip, VerticalFlip, RandomCrop
 from cat_sam.models.modeling import CATSAMT, CATSAMA
 from cat_sam.utils.evaluators import SamHQIoU, StreamSegMetrics
-
-
+import logging
+# from cat_sam.models.segment_anything_ext
+# /applications/graduate_design/cat-sam/cat_sam/models/segment_anything_ext/build_sam.py
 def calculate_dice_loss(inputs: torch.Tensor, targets: torch.Tensor):
     """
     Compute the DICE loss, similar to generalized IOU for masks
@@ -54,6 +55,8 @@ def worker_init_fn(worker_id: int, base_seed: int, same_worker_seed: bool = True
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
+from datetime import datetime
+
 
 
 def parse():
@@ -90,12 +93,29 @@ def parse():
              "Default to be full-shot."
     )
     parser.add_argument(
-        '--sam_type', default='vit_l', type=str, choices=['vit_b', 'vit_l', 'vit_h'],
+        '--sam_type', default='vit_l', type=str, choices=['vit_b', 'vit_l', 'vit_h','rein_vit_l','rein_vit_h'],
         help='The type of the backbone SAM model. Default to be vit_l.'
     )
     parser.add_argument(
         '--cat_type', required=True, type=str, choices=['cat-a', 'cat-t'],
         help='The type of the CAT-SAM model. This argument is required.'
+    )
+    cat_ckpt_dir = '/applications/graduate_design/model/finetuned/cat_sam/'
+    CAT_ckpt_path_dict = dict(
+        cat_t=dict(
+            vit_b=f'{cat_ckpt_dir}/_vit_b_cat-t_16shot/best_model.pth',
+            vit_l=f'{cat_ckpt_dir}/_vit_l_cat-t_16shot/best_model.pth',
+            vit_h=f'{cat_ckpt_dir}/_vit_h_cat-t_16shot/best_model.pth',
+        ),
+        cat_a=dict(
+            vit_b=f'{cat_ckpt_dir}/_vit_b_cat-a_16shot/best_model.pth',
+            vit_l=f'{cat_ckpt_dir}/_vit_l_cat-a_16shot/best_model.pth',
+            vit_h=f'{cat_ckpt_dir}/_vit_h_cat-a_16shot/best_model.pth',
+        )
+    )
+    parser.add_argument(
+        '--ckpt_path', required=False, type=str, default=None,
+        help="The absolute path to your target checkpoint file. This argument is required."
     )
     return parser.parse_args()
 
@@ -113,11 +133,26 @@ def batch_to_cuda(batch, device):
     return batch
 
 
+cat_ckpt_dir = '/applications/graduate_design/model/finetuned/cat_sam/'
 
+CAT_ckpt_path_dict = dict(
+    cat_t=dict(
+        vit_b=f'{cat_ckpt_dir}/_vit_b_cat-t_16shot/best_model.pth',
+        vit_l=f'{cat_ckpt_dir}/_vit_l_cat-t_16shot/best_model.pth',
+        vit_h=f'{cat_ckpt_dir}/_vit_h_cat-t_16shot/best_model.pth',
+    ),
+    cat_a=dict(
+        vit_b=f'{cat_ckpt_dir}/_vit_b_cat-a_16shot/best_model.pth',
+        vit_l=f'{cat_ckpt_dir}/_vit_l_cat-a_16shot/best_model.pth',
+        vit_h=f'{cat_ckpt_dir}/_vit_h_cat-a_16shot/best_model.pth',
+    )
+)
 def main_worker(worker_id, worker_args):
     set_randomness()
     if isinstance(worker_id, str):
         worker_id = int(worker_id)
+    
+    
 
     gpu_num = len(worker_args.used_gpu)
     world_size = os.environ['WORLD_SIZE'] if 'WORLD_SIZE' in os.environ.keys() else gpu_num
@@ -179,19 +214,61 @@ def main_worker(worker_id, worker_args):
         dataset=val_dataset, batch_size=val_bs, shuffle=False, num_workers=val_workers,
         drop_last=False, collate_fn=val_dataset.collate_fn
     )
-
+    
     if worker_args.cat_type == 'cat-t':
         model_class = CATSAMT
     elif worker_args.cat_type == 'cat-a':
         model_class = CATSAMA
     else:
         raise ValueError(f'invalid cat_type: {worker_args.cat_type}!')
-    model = model_class(model_type=worker_args.sam_type).to(device=device)
-    if torch.distributed.is_initialized():
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False
+
+    
+    model = None
+    reins_config = None
+    exp_path = join(
+        worker_args.exp_dir,
+        f'{worker_args.dataset}_{worker_args.sam_type}_{worker_args.cat_type}_{worker_args.shot_num if worker_args.shot_num else "full"}shot'
+    )
+    print("=====================eo==========================")
+    print(exp_path)
+    if not os.path.exists(exp_path):
+        os.mkdir(exp_path)
+    logging.basicConfig(filename=os.path.join(exp_path,'log.log'), format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
+                    level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
+    logging.info(f"====Train: {args.cat_type}_{args.sam_type}_{args.shot_num if args.shot_num else 'full'}shot ====")
+    logging.info("Config")
+    logging.info(f'Args:{args}')
+    if worker_args.sam_type in ['rein_vit_l','rein__vit_h']:
+        reins_config=dict(
+            token_length=100,
+            link_token_to_query=True,
+            lora_dim=16,
+            zero_mlp_delta_f=False,  # v2
         )
+        from cat_sam.models.segment_anything_ext import change_rein_cfg
+        reins_config = change_rein_cfg(model_type=worker_args.sam_type,rein_cfg=reins_config)
+    # model = model_class(model_type=worker_args.sam_type,rein_cfg=reins_config).to(device=device)
+    # if torch.distributed.is_initialized():
+    #     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    #     model = torch.nn.parallel.DistributedDataParallel(
+    #         model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False
+    #     )
+    if worker_args.ckpt_path is None:
+        model = model_class(model_type=worker_args.sam_type,rein_cfg=reins_config).to(device=device)
+        if torch.distributed.is_initialized():
+            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            model = torch.nn.parallel.DistributedDataParallel(
+                model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False
+            )
+    else:
+        model = model_class(model_type=worker_args.sam_type,rein_cfg=reins_config).to(device=device)
+        model_state_dict = torch.load(worker_args.ckpt_path, map_location=device)
+        if 'model' in model_state_dict.keys():
+            model_state_dict = model_state_dict['model']
+        model.load_state_dict(model_state_dict)
+    model.train()
+
+
 
     optimizer = torch.optim.AdamW(
         params=[p for p in model.parameters() if p.requires_grad], lr=1e-3, weight_decay=1e-4
@@ -221,12 +298,9 @@ def main_worker(worker_id, worker_args):
             class_names = ['Background', 'Foreground']
         iou_eval = StreamSegMetrics(class_names=class_names)
 
-    exp_path = join(
-        worker_args.exp_dir,
-        f'{worker_args.dataset}_{worker_args.sam_type}_{worker_args.cat_type}_{worker_args.shot_num if worker_args.shot_num else "full"}shot'
-    )
+    
     os.makedirs(exp_path, exist_ok=True)
-    model.train()
+    
     for epoch in range(1, max_epoch_num + 1):
         if hasattr(train_dataloader.sampler, 'set_epoch'):
             train_dataloader.sampler.set_epoch(epoch)
@@ -234,10 +308,10 @@ def main_worker(worker_id, worker_args):
         train_pbar = None
         if local_rank == 0:
             train_pbar = tqdm(total=len(train_dataloader), desc='train', leave=False)
+        total_step = len(train_dataloader)
+        model.train()
         for train_step, batch in enumerate(train_dataloader):
-            
             batch = batch_to_cuda(batch, device)
-            # print(batch['images'].shape)
             masks_pred = model(
                 imgs=batch['images'], point_coords=batch['point_coords'], point_labels=batch['point_labels'],
                 box_coords=batch['box_coords'], noisy_masks=batch['noisy_object_masks']
@@ -293,11 +367,16 @@ def main_worker(worker_id, worker_args):
                     total_loss=loss_dict['total_loss'], bce_loss=loss_dict['bce_loss'], dice_loss=loss_dict['dice_loss']
                 )
                 train_pbar.set_postfix_str(str_step_info)
-
+            if train_step % 100 == 0 or train_step == 1 or train_step == total_step:
+                logging.info(
+                    '#TRAIN#:{} Epoch [{:03d}/{:03d}], Step [{:04d}/{:04d}], total_loss: {:.4f}, '
+                    'bce_loss: {:.4f},  dice_loss: {:.4f}'.
+                    format(datetime.now(), epoch, max_epoch_num+1, train_step, total_step, 
+                            loss_dict['total_loss'], loss_dict['bce_loss'], loss_dict['dice_loss']))
         scheduler.step()
         if train_pbar:
             train_pbar.clear()
-
+        
         if local_rank == 0 and epoch % valid_per_epochs == 0:
             model.eval()
             valid_pbar = tqdm(total=len(val_dataloader), desc='valid', leave=False)
@@ -330,8 +409,13 @@ def main_worker(worker_id, worker_args):
                     epoch=epoch, epochs=max_epoch_num
                 )
                 valid_pbar.set_postfix_str(str_step_info)
+                if val_step % 40 == 0 or val_step == 1:
+                    logging.info(
+                        '#VAL#:{} Epoch [{:03d}/{:03d}], Step [{:04d}/200],  '.
+                        format(datetime.now(), epoch, max_epoch_num+1, val_step))
 
             miou = iou_eval.compute()[0]['Mean Foreground IoU']
+            logging.info(f'#VAL#:Epoch:{epoch}  miou:{miou}')
             iou_eval.reset()
             valid_pbar.clear()
 
@@ -342,11 +426,14 @@ def main_worker(worker_id, worker_args):
                 )
                 best_miou = miou
                 print(f'Best mIoU has been updated to {best_miou:.2%}!')
+                logging.info(f'Best mIoU has been updated to {best_miou:.2%}!')
 
+args = parse()
+import os
 
 
 if __name__ == '__main__':
-    args = parse()
+    
 
     if 'CUDA_VISIBLE_DEVICES' in os.environ.keys():
         used_gpu = os.environ['CUDA_VISIBLE_DEVICES'].split(',')

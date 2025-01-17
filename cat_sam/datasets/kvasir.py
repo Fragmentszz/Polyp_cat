@@ -36,19 +36,69 @@ class KvasirDataset(BinaryCATSAMDataset):
             shot_num: int = None,
             **super_args
     ):
-        json_path = join(data_dir, 'train.json' if train_flag else 'test.json')
+        json_path = join(data_dir,'dataset','polyp',('train.json' if train_flag else 'test.json'))
+        
         with open(json_path, 'r') as j_f:
             json_config = json.load(j_f)
+        print(f"Number of images in the dataset: {len(json_config)}")
         for key in json_config.keys():
-            json_config[key]['image_path'] = join(data_dir, json_config[key]['image_path'])
-            json_config[key]['mask_path'] = join(data_dir, json_config[key]['mask_path'])
-
+            # json_config[key]['image_path'] = join(data_dir, json_config[key]['image_path'])
+            # json_config[key]['mask_path'] = join(data_dir, json_config[key]['mask_path'])
+            json_config[key]['image_path'] = json_config[key]['image_path']
+            json_config[key]['mask_path'] = json_config[key]['mask_path']
+            
+                                                                                                                                
         if shot_num is not None:
             assert shot_num in [1, 16], f"Invalid shot_num: {shot_num}! Must be either 1 or 16!"
-            json_config = {key: value for key, value in json_config.items() if key in few_shot_img_dict[shot_num]}
-
+            # json_config = {key: value for key, value in json_config.items() if key in few_shot_img_dict[shot_num]}
+            json_config = {key: value for key, value in json_config.items()}
+        
         super(KvasirDataset, self).__init__(
             dataset_config=json_config, train_flag=train_flag,
+            label_threshold=254, object_connectivity=8,
+            area_threshold=20, relative_threshold=True,
+            **super_args
+        )
+
+class KvasirDataset_test(BinaryCATSAMDataset):
+
+    def __init__(
+            self,
+            data_dir: str,
+            **super_args
+    ):
+
+        
+        # with open(json_path, 'r') as j_f:
+        #     json_config = json.load(j_f)
+        # print(f"Number of images in the dataset: {len(json_config)}")
+        # for key in json_config.keys():
+        #     # json_config[key]['image_path'] = join(data_dir, json_config[key]['image_path'])
+        #     # json_config[key]['mask_path'] = join(data_dir, json_config[key]['mask_path'])
+        #     json_config[key]['image_path'] = json_config[key]['image_path']
+        #     json_config[key]['mask_path'] = json_config[key]['mask_path']
+            
+                                                                                                                                
+        # if shot_num is not None:
+        #     assert shot_num in [1, 16], f"Invalid shot_num: {shot_num}! Must be either 1 or 16!"
+        #     # json_config = {key: value for key, value in json_config.items() if key in few_shot_img_dict[shot_num]}
+        #     json_config = {key: value for key, value in json_config.items()}
+        json_config = {}
+        images_path = join(data_dir, 'images')
+        masks_path = join(data_dir, 'gts')
+        import os
+        for image_name in os.listdir(images_path):
+            sample_name = '.'.join(image_name.split('.')[:-1])
+            image_file_path = join(images_path, image_name)
+            mask_name = image_name
+            mask_file_path = join(masks_path, mask_name)
+            json_config[sample_name] = dict(
+                image_path=image_file_path, mask_path=mask_file_path
+            )
+
+        
+        super(KvasirDataset_test, self).__init__(
+            dataset_config=json_config, train_flag=False,
             label_threshold=254, object_connectivity=8,
             area_threshold=20, relative_threshold=True,
             **super_args

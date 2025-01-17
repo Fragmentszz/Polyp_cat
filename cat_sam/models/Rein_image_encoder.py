@@ -10,11 +10,63 @@ import torch.nn.functional as F
 
 from typing import Optional, Tuple, Type
 
-from .common import LayerNorm2d, MLPBlock
+
+from .reins import Reins,LoRAReins
+from .segment_anything_ext.modeling.image_encoder import ImageEncoderViT
+import torch.nn as nn
+from typing import List
 
 
+first_set_requires_grad = True
+first_set_train = True
+
+
+def set_requires_grad(model: nn.Module, keywords: List[str]):
+    """
+    notice:key in name!
+    """
+    requires_grad_names = []
+    num_params = 0
+    num_trainable = 0
+    for name, param in model.named_parameters():
+        num_params += param.numel()
+        if any(key in name for key in keywords):
+            param.requires_grad = True
+            requires_grad_names.append(name)
+            num_trainable += param.numel()
+        else:
+            param.requires_grad = False
+    # global first_set_requires_grad
+    # if first_set_requires_grad:
+    #     first_set_requires_grad = False
+
+
+def _set_train(model: nn.Module, keywords: List[str], prefix: str = ""):
+    train_names = []
+    for name, child in model.named_children():
+        fullname = ".".join([prefix, name])
+        if any(name.startswith(key) for key in keywords):
+            train_names.append(fullname)
+            child.train()
+        else:
+            train_names += _set_train(child, keywords, prefix=fullname)
+    return train_names
+
+
+def set_train(model: nn.Module, keywords: List[str]):
+    """
+    notice:sub name startwith key!
+    """
+    model.train(False)
+    train_names = _set_train(model, keywords)
+    # global first_set_train
+    # if first_set_train:
+    #     logger = MMLogger.get_current_instance()
+    #     for train_name in train_names:
+    #         logger.info(f"set_train----{train_name}")
+    #     first_set_train = False
 # This class and its supporting functions below lightly adapted from the ViTDet backbone available at: https://github.com/facebookresearch/detectron2/blob/main/detectron2/modeling/backbone/vit.py # noqa
-class ImageEncoderViT(nn.Module):
+class ReinImageEncoderViT(ImageEncoderViT):
     def __init__(
         self,
         img_size: int = 1024,
@@ -33,6 +85,7 @@ class ImageEncoderViT(nn.Module):
         rel_pos_zero_init: bool = True,
         window_size: int = 0,
         global_attn_indexes: Tuple[int, ...] = (),
+        reins_cfg = None
     ) -> None:
         """
         Args:
@@ -52,73 +105,84 @@ class ImageEncoderViT(nn.Module):
             window_size (int): Window size for window attention blocks.
             global_attn_indexes (list): Indexes for blocks using global attention.
         """
-        super().__init__()
-        self.img_size = img_size
-        self.global_attn_indexes = global_attn_indexes
-
-        self.patch_embed = PatchEmbed(
-            kernel_size=(patch_size, patch_size),
-            stride=(patch_size, patch_size),
+        super().__init__(
+            img_size=img_size,
+            patch_size=patch_size,
             in_chans=in_chans,
             embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
+            mlp_ratio=mlp_ratio,
+            out_chans=out_chans,
+            qkv_bias=qkv_bias,
+            norm_layer=norm_layer,
+            act_layer=act_layer,
+            use_abs_pos=use_abs_pos,
+            use_rel_pos=use_rel_pos,
+            rel_pos_zero_init=rel_pos_zero_init,
+            window_size=window_size,
+            global_attn_indexes=global_attn_indexes,
         )
+        # reins_config=dict(
+        #     type="LoRAReins",
+        #     token_length=100,
+        #     embed_dims=1280,
+        #     num_layers=4,
+        #     patch_size=16,
+        #     link_token_to_query=True,
+        #     lora_dim=16,
+        #     zero_mlp_delta_f=False,  # v2
+        # ),
+        self.rein_enabled_layers = global_attn_indexes
 
-        self.pos_embed: Optional[nn.Parameter] = None
-        if use_abs_pos:
-            # Initialize absolute positional embedding with pretrain image size.
-            self.pos_embed = nn.Parameter(
-                torch.zeros(1, img_size // patch_size, img_size // patch_size, embed_dim)
-            )
-
-        self.blocks = nn.ModuleList()
-        
-        for i in range(depth):
-            block = Block(
-                dim=embed_dim,
-                num_heads=num_heads,
-                mlp_ratio=mlp_ratio,
-                qkv_bias=qkv_bias,
-                norm_layer=norm_layer,
-                act_layer=act_layer,
-                use_rel_pos=use_rel_pos,
-                rel_pos_zero_init=rel_pos_zero_init,
-                window_size=window_size if i not in global_attn_indexes else 0,
-                input_size=(img_size // patch_size, img_size // patch_size),
-            )
-            self.blocks.append(block)
-
-        self.neck = nn.Sequential(
-            nn.Conv2d(
-                embed_dim,
-                out_chans,
-                kernel_size=1,
-                bias=False,
-            ),
-            LayerNorm2d(out_chans),
-            nn.Conv2d(
-                out_chans,
-                out_chans,
-                kernel_size=3,
-                padding=1,
-                bias=False,
-            ),
-            LayerNorm2d(out_chans),
-        )
-        
+        self.rein_cfg = reins_cfg
+        print(self.rein_cfg)
+        self.rein_cfg['embed_dims'] = embed_dim
+        self.rein_cfg['patch_size'] = patch_size
+        self.rein_cfg['num_layers'] = len(self.rein_enabled_layers)
+        # if reins_cfg['type'] == 'LoRAReins':
+        #     self.reins:Reins =  LoRAReins(**reins_cfg) if reins_cfg is not None else None
+        # else:
+        #     self.reins:Reins = Reins(**reins_cfg) if reins_cfg is not None else None
+        self.reins:Reins =  LoRAReins(**self.rein_cfg) if self.rein_cfg is not None else None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.patch_embed(x)
         if self.pos_embed is not None:
             x = x + self.pos_embed
         interm_embeddings=[]
-        for blk in self.blocks:
+        
+        for idx,blk in enumerate(self.blocks):
             x = blk(x)
+            B, H, W, C = x.shape
+            if self.reins is not None and idx in self.rein_enabled_layers :
+                x = self.reins.forward(
+                    x.view(B, -1, C),
+                    self.rein_enabled_layers.index(idx),
+                    batch_first=True,
+                    has_cls_token=False,
+                ).view(B, H, W, C)
             if blk.window_size == 0:
                 interm_embeddings.append(x)
+            
 
         x = self.neck(x.permute(0, 3, 1, 2))
         
         return x, interm_embeddings
+    def train(self, mode: bool = True):
+        if not mode:
+            return super().train(mode)
+        set_requires_grad(self, ["reins"])
+        set_train(self, ["reins"])
+
+    def state_dict(self, destination, prefix, keep_vars):
+        state = super().state_dict(destination, prefix, keep_vars)
+        keys = [k for k in state.keys() if "rein" not in k]
+        for key in keys:
+            state.pop(key)
+            if key in destination:
+                destination.pop(key)
+        return state
 
 
 class Block(nn.Module):

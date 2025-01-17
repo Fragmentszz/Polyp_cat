@@ -8,20 +8,27 @@ from torch import nn
 from cat_sam.models.encoders import SAMImageEncodeWrapper, SAMPromptEncodeWrapper, CATSAMTImageEncoder, CATSAMAImageEncoder
 from cat_sam.models.decoders import MaskDecoderHQ
 from cat_sam.models.segment_anything_ext import sam_model_registry
-
-
+from cat_sam.models.rein_encoder import ReinCATSAMAImageEncoder,ReinCATSAMTImageEncoder
+sam_init_dir = '/applications/graduate_design/model/init'
 sam_ckpt_path_dict = dict(
-    vit_b='./pretrained/sam_vit_b_01ec64.pth',
-    vit_l='./pretrained/sam_vit_l_0b3195.pth',
-    vit_h='./pretrained/sam_vit_h_4b8939.pth'
+    # vit_b='./pretrained/sam_vit_b_01ec64.pth',
+    # vit_l='./pretrained/sam_vit_l_0b3195.pth',
+    # vit_h='./pretrained/sam_vit_h_4b8939.pth'
+    vit_b=f'{sam_init_dir}/sam_vit_b_01ec64.pth',
+    vit_l=f'{sam_init_dir}/sam_vit_l_0b3195.pth',
+    vit_h=f'{sam_init_dir}/sam_vit_h_4b8939.pth',
+    rein_vit_l=f'{sam_init_dir}/sam_vit_l_0b3195.pth',
+    rein_vit_h=f'{sam_init_dir}/sam_vit_h_4b8939.pth',
 )
 
 class BaseCATSAM(nn.Module):
 
     def __init__(self, model_type: str):
         super(BaseCATSAM, self).__init__()
-        assert model_type in ['vit_b', 'vit_l', 'vit_h'], f"invalid model_type: {model_type}!"
+        assert model_type in ['vit_b', 'vit_l', 'vit_h','rein_vit_l','rein_vit_h','rein_vit_b'], f"invalid model_type: {model_type}!"
         self.ori_sam = sam_model_registry[model_type](sam_ckpt_path_dict[model_type])
+        if 'rein' in model_type:
+            model_type = model_type[5:]
         self.sam_img_size = (self.ori_sam.image_encoder.img_size, self.ori_sam.image_encoder.img_size)
 
         self.image_encoder = SAMImageEncodeWrapper(ori_sam=self.ori_sam, fix=True)
@@ -438,12 +445,18 @@ class BaseCATSAM(nn.Module):
 
 
 class CATSAMT(BaseCATSAM):
-    def __init__(self, model_type: str):
+    def __init__(self, model_type: str,rein_cfg=None):
         super(CATSAMT, self).__init__(model_type=model_type)
-        self.image_encoder = CATSAMTImageEncoder(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight)
+        if rein_cfg is not None:
+            self.image_encoder = ReinCATSAMTImageEncoder(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight,reins_cfg=rein_cfg)
+        else:
+            self.image_encoder = CATSAMTImageEncoder(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight)
 
 
 class CATSAMA(BaseCATSAM):
-    def __init__(self, model_type: str):
+    def __init__(self, model_type: str,rein_cfg=None):
         super(CATSAMA, self).__init__(model_type=model_type)
-        self.image_encoder = CATSAMAImageEncoder(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight)
+        if rein_cfg is not None:
+            self.image_encoder = ReinCATSAMAImageEncoder(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight,reins_cfg=rein_cfg)
+        else:
+            self.image_encoder = CATSAMAImageEncoder(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight)
