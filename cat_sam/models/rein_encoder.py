@@ -5,6 +5,17 @@ from cat_sam.models.module_lib import Adapter, PromptGenerator
 from .encoders import CATSAMAImageEncoder,CATSAMTImageEncoder
 
 from .reins import Reins,LoRAReins,Reins_Attention,My_LoRAReins,Reins_Attention2,Reins_Attention2_upd,Reins_Attention2_upd2
+
+
+cls_dic = {
+    'Reins':Reins,
+    'LoRAReins',LoRAReins,
+    'Reins_Attention',Reins_Attention,
+    'My_LoRAReins',Reins_Attention2,
+    'Reins_Attention2',Reins_Attention2,
+    'Reins_Attention2_upd',Reins_Attention2_upd,
+    'Reins_Attention2_upd2',Reins_Attention2_upd2
+}
 class ReinCATSAMTImageEncoder(CATSAMTImageEncoder):
 
     def __init__(
@@ -116,11 +127,7 @@ class MyCATSAMAImageEncoder(CATSAMAImageEncoder):
         reins_cfg['num_layers'] = len(self.sam_img_encoder.blocks)
         reins_cfg['embed_dims_ratio'] = 32
         reins_cfg['hq_token'] = hq_token
-
-
-
-        print(self.rein_cfg)
-     
+        
         self.hq_token = hq_token
         patch_height = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[0]
         patch_width = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[1]
@@ -176,15 +183,15 @@ class MyCATSAMAImageEncoder2(CATSAMAImageEncoder):
         reins_cfg['hq_token'] = hq_token
 
 
+        rein_cls = cls_dic[reins_cfg['type']]
 
-        print(self.rein_cfg)
-     
+        reins_cfg.pop('type')
         self.hq_token = hq_token
         patch_height = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[0]
         patch_width = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[1]
         
 
-        self.reins = Reins_Attention2_upd2(**self.rein_cfg) if self.rein_cfg is not None else None
+        self.reins = rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         inp = x

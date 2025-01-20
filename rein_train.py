@@ -117,6 +117,10 @@ def parse():
         '--ckpt_path', required=False, type=str, default=None,
         help="The absolute path to your target checkpoint file. This argument is required."
     )
+    parser.add_argument(
+        '--rein_type', required=True, type=str, default=None,
+        help="the type of rein"
+    )
     return parser.parse_args()
 
 

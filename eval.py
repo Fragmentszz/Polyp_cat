@@ -47,6 +47,10 @@ def parse():
         '--cat_type', required=True, type=str, choices=['cat-a', 'cat-t'],
         help='The type of the CAT-SAM model. This argument is required.'
     )
+    parser.add_argument(
+        '--rein_type', required=True, type=str, default=None,
+        help="the type of rein"
+    )
     return parser.parse_args()
 
 import logging
