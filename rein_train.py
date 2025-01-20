@@ -231,7 +231,7 @@ def main_worker(worker_id, worker_args):
     reins_config = None
     exp_path = join(
         worker_args.exp_dir,
-        f'{worker_args.dataset}_{worker_args.sam_type}_{worker_args.cat_type}_{worker_args.shot_num if worker_args.shot_num else "full"}shot'
+        f'{worker_args.rein_type}_{worker_args.dataset}_{worker_args.sam_type}_{worker_args.cat_type}_{worker_args.shot_num if worker_args.shot_num else "full"}shot'
     )
     print("=====================eo==========================")
     print(exp_path)
