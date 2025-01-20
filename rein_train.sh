@@ -1,4 +1,4 @@
-expected_hostname="ins-18857555890-20250107-gpu-dbcloud-master-a0fe70e1-85cc9s84b6"
+expected_hostname="ins-18857555890-20250107-gpu-dbcloud-master-a0fe70e1-55d54qkhct"
 
 
 current_hostname=$(hostname)

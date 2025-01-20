@@ -240,9 +240,9 @@ def main_worker(worker_id, worker_args):
     logging.info(f'Args:{args}')
     if worker_args.sam_type in ['rein_vit_l','rein__vit_h']:
         reins_config=dict(
-            token_length=100,
-            link_token_to_query=True,
-            lora_dim=16,
+            token_length=128,
+            # link_token_to_query=True,
+            # lora_dim=16,
             zero_mlp_delta_f=False,  # v2
         )
         from cat_sam.models.segment_anything_ext import change_rein_cfg
