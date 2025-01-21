@@ -249,6 +249,7 @@ def main_worker(worker_id, worker_args):
             # lora_dim=16,
             zero_mlp_delta_f=False,  # v2
         )
+        reins_config['type'] = worker_args.rein_type
         from cat_sam.models.segment_anything_ext import change_rein_cfg
         reins_config = change_rein_cfg(model_type=worker_args.sam_type,rein_cfg=reins_config)
     # model = model_class(model_type=worker_args.sam_type,rein_cfg=reins_config).to(device=device)

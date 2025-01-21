@@ -64,10 +64,11 @@ def build_model(worker_args):
     if worker_args.sam_type in ['rein_vit_l','rein__vit_h']:
         reins_config=dict(
             token_length=100,
-            link_token_to_query=True,
-            lora_dim=16,
+            # link_token_to_query=True,
+            # lora_dim=16,
             zero_mlp_delta_f=False,  # v2
         )
+        reins_config['type'] = worker_args.rein_type
         from cat_sam.models.segment_anything_ext import change_rein_cfg
         reins_config = change_rein_cfg(model_type=worker_args.sam_type,rein_cfg=reins_config)
 
