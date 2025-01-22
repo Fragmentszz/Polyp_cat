@@ -6,7 +6,7 @@ from .encoders import CATSAMAImageEncoder,CATSAMTImageEncoder
 
 from .reins import Reins,LoRAReins,Reins_Attention,My_LoRAReins,Reins_Attention2,Reins_Attention2_upd,Reins_Attention2_upd2,Reins_Attention3
 
-
+from .reins import Reins_Attention3_v2
 cls_dic = {
     'Reins':Reins,
     'LoRAReins':LoRAReins,
@@ -15,7 +15,8 @@ cls_dic = {
     'Reins_Attention2':Reins_Attention2,
     'Reins_Attention2_upd':Reins_Attention2_upd,
     'Reins_Attention2_upd2':Reins_Attention2_upd2,
-    'Reins_Attention3':Reins_Attention3
+    'Reins_Attention3':Reins_Attention3,
+    'Reins_Attention3_v2':Reins_Attention3_v2
 }
 class ReinCATSAMTImageEncoder(CATSAMTImageEncoder):
 
@@ -180,7 +181,7 @@ class MyCATSAMAImageEncoder2(CATSAMAImageEncoder):
 
         self.rein_cfg = reins_cfg
         reins_cfg['num_layers'] = len(self.sam_img_encoder.blocks)
-        reins_cfg['embed_dims_ratio'] = 4
+        reins_cfg['embed_dims_ratio'] = 0.25
         reins_cfg['hq_token'] = hq_token
 
 
