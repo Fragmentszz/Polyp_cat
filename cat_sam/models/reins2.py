@@ -112,6 +112,8 @@ class Reins_Attention4(nn.Module):
             in_features=int(self.embed_dims*self.mlp_ratio),
             out_features=int(self.embed_dims)
         )
+        self.mlp_token2feat = nn.Linear(self.embed_dims, self.embed_dims)
+        self.mlp_delta_f = nn.Linear(self.embed_dims, self.embed_dims)
         self.A = nn.Parameter(torch.empty([1, self.token_length, round(self.embed_dims*self.embed_dims_ratio)]))
         self.B = nn.Parameter(torch.empty([self.num_layers,round(self.embed_dims*self.embed_dims_ratio),self.token_dim]))
            
