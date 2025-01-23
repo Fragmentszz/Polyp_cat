@@ -1,9 +1,88 @@
 
+from sympy import N
 from torch import nn, Tensor
 import torch
 import math
+import torch.nn.functional as F
+from cat_sam.models.module_lib import PatchEmbed2
+import collections.abc as container_abcs
+from itertools import repeat
+
+def to_2tuple(x):
+    if isinstance(x, container_abcs.Iterable):
+        return x
+    return tuple(repeat(x, 2))
+
+class PatchEmbed2(nn.Module):
+    """
+    Adapted from
+    https://github.com/tianrun-chen/SAM-Adapter-PyTorch/blob/60bd2770b1c4fcb38d98822cae9a17781601ff9e/models/mmseg/models/sam/image_encoder.py#L340
+    """
+
+    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
+        super().__init__()
+        img_size = to_2tuple(img_size)
+        patch_size = to_2tuple(patch_size)
+        num_patches = (img_size[1] // patch_size[1]) * \
+            (img_size[0] // patch_size[0])
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.num_patches = num_patches
+
+        self.proj = nn.Conv2d(in_chans, embed_dim,
+                              kernel_size=patch_size, stride=patch_size)
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        assert H == self.img_size[0] and W == self.img_size[1], \
+            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+
+        # x = F.interpolate(x, size=2*x.shape[-1], mode='bilinear', align_corners=True)
+        x = self.proj(x)
+        return x
+
+
+class EVP(nn.Module):
+    def __init__(self,img_size=224, patch_size=16, in_chans=3, embed_dim=768,freq_nums=0.25):
+        super().__init__()
+        self.patch_embed = PatchEmbed2(
+            img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
+        self.freq_nums = freq_nums
+    def forward(self,x):
+        x = self.fft(x,self.freq_nums)
+        return self.patch_embed(x)
+
+    def init_handcrafted(self, x):
+        x = self.fft(x, self.freq_nums)
+        return self.patch_embed(x)
+    
+    def fft(self, x, rate):
+        # the smaller rate, the smoother; the larger rate, the darker
+        # rate = 4, 8, 16, 32
+        mask = torch.zeros(x.shape).to(x.device)
+        w, h = x.shape[-2:]
+        line = int((w * h * rate) ** .5 // 2)
+        mask[:, :, w//2-line:w//2+line, h//2-line:h//2+line] = 1
+
+        fft = torch.fft.fftshift(torch.fft.fft2(x, norm="forward"))
+        # mask[fft.float() > self.freq_nums] = 1
+        # high pass: 1-mask, low pass: mask
+        fft = fft * (1 - mask)
+        # fft = fft * mask
+        fr = fft.real
+        fi = fft.imag
+
+        fft_hires = torch.fft.ifftshift(torch.complex(fr, fi))
+        inv = torch.fft.ifft2(fft_hires, norm="forward").real
+
+        inv = torch.abs(inv)
+
+        return inv
+
+
+
 class Reins_Attention4(nn.Module):
-    def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=32,use_softmax: bool = True,hq_token: torch.Tensor = None, 
+    def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,hq_token: torch.Tensor = None, 
                  scale_init: float = 0.001, zero_mlp_delta_f: bool = False) -> None:
         super().__init__()
         self.embed_dims = embed_dims
@@ -14,34 +93,29 @@ class Reins_Attention4(nn.Module):
         self.token_dim = hq_token.size(-1)
         self.use_softmax = use_softmax
         self.embed_dims_ratio = embed_dims_ratio
-        self.hb = 32
         self.mlp_ratio = 0.125
-        self.down_proj = nn.Linear(
-            in_features=hq_token.size(-1),
-            out_features=int(embed_dims*self.embed_dims_ratio)
-        )
-        self.gelu = nn.GELU()
-        self.up_proj = nn.Linear(
-            in_features=int(embed_dims*self.embed_dims_ratio),
-            out_features=int(embed_dims)
-        )
+
+
+        
         self.freq_nums = 0.25
         self.scale_init = scale_init
         self.create_model()
 
 
     def create_model(self):
-        # self.learnable_tokens = nn.Parameter(
-        #     torch.empty([self.num_layers, self.token_length, self.embed_dims])
-        # )
+        self.down_proj = nn.Linear(
+            in_features=self.token_dim,
+            out_features=int(self.embed_dims*self.mlp_ratio)
+        )
+        self.gelu = nn.GELU()
+        self.up_proj = nn.Linear(
+            in_features=int(self.embed_dims*self.mlp_ratio),
+            out_features=int(self.embed_dims)
+        )
         self.A = nn.Parameter(torch.empty([1, self.token_length, round(self.embed_dims*self.embed_dims_ratio)]))
         self.B = nn.Parameter(torch.empty([self.num_layers,round(self.embed_dims*self.embed_dims_ratio),self.token_dim]))
-
+           
         
-        # self.hq_token2token = nn.Linear(len(self.hq_token_down_proj), self.token_length)
-        
-        self.mlp_token2feat = nn.Linear(self.embed_dims, self.embed_dims)
-        self.mlp_delta_f = nn.Linear(self.embed_dims, self.embed_dims)
         
         
         self.apply(self._init_weights)
@@ -72,11 +146,6 @@ class Reins_Attention4(nn.Module):
             return self.mlp_token2feat, self.mlp_delta_f
     
     def forward_delta_feat(self, feats: Tensor, tokens: Tensor, layers: int) -> Tensor:
-        
-
-
-
-        
         attn = torch.einsum("nbc,mc->nbm", feats, tokens)
         mlp_token2feat, mlp_delta_f = self.get_mlps(layers)
 
@@ -94,71 +163,25 @@ class Reins_Attention4(nn.Module):
         return self.up_proj(self.gelu(self.down_proj(B)))
         
     def get_tokens(self, x:torch.Tensor,layer: int) -> Tensor:
-        # tmp_list = []
-        # for down_proj in self.hq_token_down_proj:
-        #     li2 = down_proj(self.hq_token).squeeze().split(self.intervals)
-        #     for t in li2:
-        #         tmp_list.append(self.shared_up_proj(t).unsqueeze(-1))
-        # hq_feature = torch.cat(
-        #     tmp_list,
-        #     dim=-1
-        # )
-        # print("self.A.shape",self.A[0].shape)
-        # print("self.B.shape",self.B[layer].shape)
         B = self.B[layer]
         B = self.f(B)
         tokens = self.A[0] @ B
 
         return tokens
 
-    def init_handcrafted(self, x):
-        x = self.fft(x, self.freq_nums)
-        return self.prompt_generator(x)
     
-    def fft(self, x, rate):
-        # the smaller rate, the smoother; the larger rate, the darker
-        # rate = 4, 8, 16, 32
-        mask = torch.zeros(x.shape).to(x.device)
-        w, h = x.shape[-2:]
-        line = int((w * h * rate) ** .5 // 2)
-        mask[:, :, w//2-line:w//2+line, h//2-line:h//2+line] = 1
-
-        fft = torch.fft.fftshift(torch.fft.fft2(x, norm="forward"))
-        # mask[fft.float() > self.freq_nums] = 1
-        # high pass: 1-mask, low pass: mask
-        fft = fft * (1 - mask)
-        # fft = fft * mask
-        fr = fft.real
-        fi = fft.imag
-
-        fft_hires = torch.fft.ifftshift(torch.complex(fr, fi))
-        inv = torch.fft.ifft2(fft_hires, norm="forward").real
-
-        inv = torch.abs(inv)
-
-        return inv
-    
-    def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True) -> torch.Tensor:
+    def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True,evp_feature=None) -> torch.Tensor:
         assert layer >= 0 or layer < self.num_layers , "layer should be in range of 0 to num_layers"
-
+        if evp_feature is not None:
+            B, C, H, W = evp_feature.shape
+            evp_feature = evp_feature.view(B, C, -1).permute(0,2,1)
+            x = x + evp_feature
+        
         if batch_first:
             # H*W,B,C
             x = x.permute(1, 0, 2)
         if has_cls_token:
             cls_token, x = torch.tensor_split(x, [1], dim=0)
-            
-        handcrafted_feature = self.init_handcrafted(x)
-
-        B, C, H, W = handcrafted_feature.shape
-        handcrafted_feature = handcrafted_feature.view(B, C, H*W).permute(0, 2, 1)
-        joint_feature = torch.zeros_like(handcrafted_feature)
-        # if self.embedding_tune:
-        #     joint_feature += embedding_feature
-        if self.handcrafted_tune:
-            joint_feature += handcrafted_feature
-        # if hq_feature is not None:
-        #     joint_feature += hq_feature
-        # prompt = self.forward_delta_feat(embedding_feature, joint_feature, layer)
 
         tokens = self.get_tokens(x,layer)
         delta_feat = self.forward_delta_feat(
