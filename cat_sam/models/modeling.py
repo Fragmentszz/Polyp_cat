@@ -71,14 +71,19 @@ class BaseCATSAM(nn.Module):
     ):
         if (image_embeddings is None) ^ (interm_embeddings is None):
             raise RuntimeError("Please give image_embeddings and interm_embeddings at the same time for inference!")
-
+        print("image_embeddings:",image_embeddings)
+        print("interm_embeddings:",interm_embeddings)
         if image_embeddings is None and interm_embeddings is None:
             # record the original image size for later mask resizing
             ori_img_size = [(imgs[i].shape[-2], imgs[i].shape[-1]) for i in range(len(imgs))]
             imgs, point_coords, box_coords = self.preprocess(
                 imgs=imgs, point_coords=point_coords, box_coords=box_coords, ori_img_size=ori_img_size)
             # imgs here is normalized with the shape of (B, 3, 1024, 1024)
+            
             image_embeddings, interm_embeddings = self.image_encoder(imgs)
+            # 有改动
+            hq_token_weight = self.image_encoder.get_hq_token()
+
         elif ori_img_size is None:
             raise RuntimeError("Please also specify ori_img_size to forward() during the inference!")
 
@@ -143,6 +148,7 @@ class BaseCATSAM(nn.Module):
 
         img, _, _ = self.preprocess(imgs=img, ori_img_size=self.ori_infer_img_size)
         self.img_features, self.interm_features = self.image_encoder(img)
+        self.hqtoken = self.image_encoder.get_hq_token()
         return img
 
 
@@ -162,13 +168,18 @@ class BaseCATSAM(nn.Module):
                 "Inference image has not been initialized! Please call set_infer_img() before infer().")
         point_coords, point_labels, box_coords, noisy_masks = \
             self.proc_raw_prompts(point_coords=point_coords, box_coords=box_coords)
-
+        # 有改动
+        # masks_pred = self.forward(
+        #     imgs=None, image_embeddings=self.img_features, interm_embeddings=self.interm_features,
+        #     ori_img_size=self.ori_infer_img_size, return_all_hq_masks=return_all_hq_masks,
+        #     point_coords=point_coords, point_labels=point_labels, box_coords=box_coords, noisy_masks=noisy_masks,
+        # )
         masks_pred = self.forward(
             imgs=None, image_embeddings=self.img_features, interm_embeddings=self.interm_features,
             ori_img_size=self.ori_infer_img_size, return_all_hq_masks=return_all_hq_masks,
             point_coords=point_coords, point_labels=point_labels, box_coords=box_coords, noisy_masks=noisy_masks,
+            hq_token_weight=self.hqtoken
         )
-
         if assemble_all_masks:
             masks_pred = self.assemble_raw_masks(masks_pred)
         else:

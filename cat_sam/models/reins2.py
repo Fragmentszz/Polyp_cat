@@ -118,7 +118,7 @@ class Reins_Attention4(nn.Module):
         self.B = nn.Parameter(torch.empty([self.num_layers,round(self.embed_dims*self.embed_dims_ratio),self.token_dim]))
            
         
-        
+        self.token2hq = nn.Linear(3*self.token_length*self.embed_dims, self.token_dim)
         
         self.apply(self._init_weights)
         self.scale = nn.Parameter(torch.tensor(self.scale_init))
@@ -138,7 +138,22 @@ class Reins_Attention4(nn.Module):
             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
             if m.bias is not None:
                 m.bias.data.zero_() 
+    def get_hq_token(self) -> Tensor:
+        # M,C
+        tokens = self.transform(self.get_tokens(-1)).permute(1, 2, 0)
+        max_token = F.max_pool1d(tokens, kernel_size=self.num_layers)
+        avg_token = F.avg_pool1d(tokens, kernel_size=self.num_layers)
+        last_token = tokens[:, :, -1].unsqueeze(-1)
+        concat = torch.cat([max_token, avg_token, last_token], dim=-1)
+        concat = concat.flatten()
+        return self.token2hq(concat).reshape(1,-1)
+
+
+
+
         
+
+
 
     def get_mlps(self, layer: int) -> Tensor:
         if layer == -1:
@@ -164,12 +179,20 @@ class Reins_Attention4(nn.Module):
     def f(self,B):
         return self.up_proj(self.gelu(self.down_proj(B)))
         
-    def get_tokens(self, x:torch.Tensor,layer: int) -> Tensor:
-        B = self.B[layer]
-        B = self.f(B)
-        tokens = self.A[0] @ B
+    def get_tokens(self, layer: int) -> Tensor:
+        if layer == -1:
+            B = self.B
+            B = self.f(B)
+            tokens = self.A @ B
+            print("tokens -1",tokens.shape)
+            return tokens
 
-        return tokens
+        else:
+            B = self.B[layer]
+            B = self.f(B)
+            tokens = self.A[0] @ B
+
+            return tokens
 
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True,evp_feature=None) -> torch.Tensor:
@@ -185,7 +208,7 @@ class Reins_Attention4(nn.Module):
         if has_cls_token:
             cls_token, x = torch.tensor_split(x, [1], dim=0)
 
-        tokens = self.get_tokens(x,layer)
+        tokens = self.get_tokens(layer)
         delta_feat = self.forward_delta_feat(
             x,
             tokens,

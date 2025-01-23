@@ -260,7 +260,9 @@ class MyCATSAMAImageEncoder3(CATSAMAImageEncoder):
 
         self.reins = rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
         
-
+    def get_hq_token(self):
+        return self.reins.get_hq_token()
+    
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         inp = x
         x = self.sam_img_encoder.patch_embed(x)
