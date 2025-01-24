@@ -197,10 +197,10 @@ class Reins_Attention4(nn.Module):
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True,evp_feature=None) -> torch.Tensor:
         assert layer >= 0 or layer < self.num_layers , "layer should be in range of 0 to num_layers"
-        if evp_feature is not None:
-            B, C, H, W = evp_feature.shape
-            evp_feature = evp_feature.view(B, C, -1).permute(0,2,1)
-            x = x + evp_feature
+        # if evp_feature is not None:
+        #     B, C, H, W = evp_feature.shape
+        #     evp_feature = evp_feature.view(B, C, -1).permute(0,2,1)
+        #     x = x + evp_feature
         
         if batch_first:
             # H*W,B,C
