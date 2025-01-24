@@ -351,8 +351,25 @@ class Reins_Attention5(nn.Module):
         else:
             return self.mlp_token2feat, self.mlp_delta_f
     
-    def forward_delta_feat(self, feats: Tensor, tokens: Tensor, layers: int) -> Tensor:
-        attn = torch.einsum("nbc,mc->nbm", feats, tokens)
+    def forward_delta_feat(self, feats: Tensor, tokens: Tensor, layers: int,evp_feature=None) -> Tensor:
+        if evp_feature is not None:
+            B, C, H, W = evp_feature.shape
+            # H*W,B,C -> B,H*W,C
+            feats = feats.permute(1,0,2)
+            attn = []
+            for b in range(B):
+                evp_token = evp_feature[b].view(C, -1).permute(1,0)
+                feat = feats[b]
+                tmp = torch.einsum("nc,mc->nm", feat, evp_token+tokens).unsqueeze(0)
+                print(tmp.shape)
+                attn.append(tmp)
+            # B,H*W,m -> H*W,B,m
+            attn = torch.cat(attn,dim=0).permute(1,0,2)
+
+            
+
+        else:
+            attn = torch.einsum("nbc,mc->nbm", feats, tokens)
         mlp_token2feat, mlp_delta_f = self.get_mlps(layers)
 
         if self.use_softmax:
@@ -386,10 +403,10 @@ class Reins_Attention5(nn.Module):
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True,evp_feature=None) -> torch.Tensor:
         assert layer >= 0 or layer < self.num_layers , "layer should be in range of 0 to num_layers"
-        if evp_feature is not None:
-            B, C, H, W = evp_feature.shape
-            evp_feature = evp_feature.view(B, C, -1).permute(0,2,1)
-            x = x + evp_feature
+        # if evp_feature is not None:
+        #     B, C, H, W = evp_feature.shape
+        #     evp_feature = evp_feature.view(B, C, -1).permute(0,2,1)
+        #     x = x + evp_feature
         
         if batch_first:
             # H*W,B,C
@@ -402,6 +419,7 @@ class Reins_Attention5(nn.Module):
             x,
             tokens,
             layer,
+            evp_feature
         )
         delta_feat = delta_feat * self.scale
         x = x + delta_feat
