@@ -9,6 +9,7 @@ from cat_sam.models.encoders import SAMImageEncodeWrapper, SAMPromptEncodeWrappe
 from cat_sam.models.decoders import MaskDecoderHQ
 from cat_sam.models.segment_anything_ext import sam_model_registry
 from cat_sam.models.rein_encoder import ReinCATSAMAImageEncoder,ReinCATSAMTImageEncoder,MyCATSAMAImageEncoder2,MyCATSAMAImageEncoder,MyCATSAMAImageEncoder3
+from cat_sam.models.rein_encoder import MyCATSAMAImageEncoder4
 sam_init_dir = '/applications/graduate_design/model/init'
 sam_ckpt_path_dict = dict(
     # vit_b='./pretrained/sam_vit_b_01ec64.pth',
@@ -469,6 +470,6 @@ class CATSAMA(BaseCATSAM):
     def __init__(self, model_type: str,rein_cfg=None):
         super(CATSAMA, self).__init__(model_type=model_type)
         if rein_cfg is not None:
-            self.image_encoder = MyCATSAMAImageEncoder3(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight,reins_cfg=rein_cfg)
+            self.image_encoder = MyCATSAMAImageEncoder4(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight,reins_cfg=rein_cfg)
         else:
             self.image_encoder = CATSAMAImageEncoder(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight)

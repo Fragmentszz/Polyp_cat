@@ -48,6 +48,7 @@ class EVP(nn.Module):
         self.patch_embed = PatchEmbed2(
             img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
         self.freq_nums = freq_nums
+        
     def forward(self,x):
         x = self.fft(x,self.freq_nums)
         return self.patch_embed(x)
@@ -85,6 +86,7 @@ class EVP2(nn.Module):
         self.patch_embed = PatchEmbed2(
             img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
         self.freq_nums = freq_nums
+        
     def forward(self,x):
         x = self.fft(x,self.freq_nums)
         return self.patch_embed(x)
@@ -299,9 +301,7 @@ class Reins_Attention5(nn.Module):
         self.mlp_delta_f = nn.Linear(self.embed_dims, self.embed_dims)
         self.A = nn.Parameter(torch.empty([1, self.token_length, round(self.embed_dims*self.embed_dims_ratio)]))
         self.B = nn.Parameter(torch.empty([self.num_layers,round(self.embed_dims*self.embed_dims_ratio),self.token_dim]))
-           
         
-        self.token2hq = nn.Linear(3*self.token_length*self.embed_dims, self.token_dim)
         
         self.apply(self._init_weights)
         self.scale = nn.Parameter(torch.tensor(self.scale_init))
@@ -333,8 +333,6 @@ class Reins_Attention5(nn.Module):
         concat = torch.cat([max_token, avg_token, last_token], dim=-1)
         concat = concat.flatten()
         hq_token = self.token2hq(concat).reshape(1,-1)
-        # print("hq_token")
-        # print(hq_token)
         return hq_token
 
 
@@ -353,19 +351,20 @@ class Reins_Attention5(nn.Module):
     
     def forward_delta_feat(self, feats: Tensor, tokens: Tensor, layers: int,evp_feature=None) -> Tensor:
         if evp_feature is not None:
-            B, C, H, W = evp_feature.shape
-            # H*W,B,C -> B,H*W,C
-            feats = feats.permute(1,0,2)
-            attn = []
-            for b in range(B):
-                evp_token = evp_feature[b].view(C, -1).permute(1,0)
-                feat = feats[b]
-                tmp = torch.einsum("nc,mc->nm", feat, evp_token+tokens).unsqueeze(0)
-                print(tmp.shape)
-                attn.append(tmp)
+            # B = evp_feature.shape[0]
+            # # H*W,B,C -> B,H*W,C
+            # feats = feats.permute(1,0,2)
+            # attn = []
+            # for b in range(B):
+            #     print(feats[b].shape)
+            #     print((evp_feature[b]+tokens).shape)
+                
+            #     attn.append((feats[b] @ (evp_feature[b]+tokens).permute(1,0)).unsqueeze(0))
+            #     # attn.append(torch.einsum("nc,mc->nm", feats[b], evp_feature[b]+tokens).unsqueeze(0))
             # B,H*W,m -> H*W,B,m
-            attn = torch.cat(attn,dim=0).permute(1,0,2)
-
+            b = 0
+            attn = (feats[b] @ (evp_feature[b]+tokens).permute(1,0)).unsqueeze(0).permute(1,0,2)
+            # attn = torch.einsum("nbc,mc->nbm", feats, tokens)
             
 
         else:
