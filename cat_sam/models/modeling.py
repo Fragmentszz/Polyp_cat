@@ -71,8 +71,8 @@ class BaseCATSAM(nn.Module):
     ):
         if (image_embeddings is None) ^ (interm_embeddings is None):
             raise RuntimeError("Please give image_embeddings and interm_embeddings at the same time for inference!")
-        print("image_embeddings:",image_embeddings)
-        print("interm_embeddings:",interm_embeddings)
+        # print("image_embeddings:",image_embeddings)
+        # print("interm_embeddings:",interm_embeddings)
         if image_embeddings is None and interm_embeddings is None:
             # record the original image size for later mask resizing
             ori_img_size = [(imgs[i].shape[-2], imgs[i].shape[-1]) for i in range(len(imgs))]

@@ -140,7 +140,7 @@ class Reins_Attention4(nn.Module):
                 m.bias.data.zero_() 
     def get_hq_token(self) -> Tensor:
         # M,C
-        tokens = self.transform(self.get_tokens(-1)).permute(1, 2, 0)
+        tokens = self.get_tokens(-1).permute(1, 2, 0)
         max_token = F.max_pool1d(tokens, kernel_size=self.num_layers)
         avg_token = F.avg_pool1d(tokens, kernel_size=self.num_layers)
         last_token = tokens[:, :, -1].unsqueeze(-1)
@@ -184,7 +184,7 @@ class Reins_Attention4(nn.Module):
             B = self.B
             B = self.f(B)
             tokens = self.A @ B
-            print("tokens -1",tokens.shape)
+            # print("tokens -1",tokens.shape)
             return tokens
 
         else:
