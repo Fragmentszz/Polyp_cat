@@ -244,6 +244,9 @@ class MyCATSAMAImageEncoder3(CATSAMAImageEncoder):
         reins_cfg['hq_token'] = hq_token
         self.EVP = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                         embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
+        
+        self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0]*2,
+                        embed_dim=reins_cfg['token_length'],freq_nums=0.25)
         # reins_cfg['EVP_size'] = self.EVP.patch_embed.num_patches
 
 
@@ -268,6 +271,8 @@ class MyCATSAMAImageEncoder3(CATSAMAImageEncoder):
         x = self.sam_img_encoder.patch_embed(x)
 
         evp = self.EVP(inp)
+        evp_feature = self.EVP2(inp)
+        
 
         
 

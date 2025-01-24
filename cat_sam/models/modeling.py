@@ -82,7 +82,7 @@ class BaseCATSAM(nn.Module):
             
             image_embeddings, interm_embeddings = self.image_encoder(imgs)
             # 有改动
-            hq_token_weight = self.image_encoder.get_hq_token()
+            # hq_token_weight = self.image_encoder.get_hq_token()
 
         elif ori_img_size is None:
             raise RuntimeError("Please also specify ori_img_size to forward() during the inference!")
@@ -148,7 +148,7 @@ class BaseCATSAM(nn.Module):
 
         img, _, _ = self.preprocess(imgs=img, ori_img_size=self.ori_infer_img_size)
         self.img_features, self.interm_features = self.image_encoder(img)
-        self.hqtoken = self.image_encoder.get_hq_token()
+        # self.hqtoken = self.image_encoder.get_hq_token()
         return img
 
 
@@ -178,7 +178,7 @@ class BaseCATSAM(nn.Module):
             imgs=None, image_embeddings=self.img_features, interm_embeddings=self.interm_features,
             ori_img_size=self.ori_infer_img_size, return_all_hq_masks=return_all_hq_masks,
             point_coords=point_coords, point_labels=point_labels, box_coords=box_coords, noisy_masks=noisy_masks,
-            hq_token_weight=self.hqtoken
+            # hq_token_weight=self.hqtoken
         )
         if assemble_all_masks:
             masks_pred = self.assemble_raw_masks(masks_pred)

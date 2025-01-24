@@ -149,9 +149,11 @@ class MaskDecoderHQ(MaskDecoder):
             hq_token_weight: torch.Tensor = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Predicts masks. See 'forward' for more details."""
-
+        # print(hq_token_weight.shape)
+        
         if hq_token_weight is None:
             hq_token_weight = self.hf_token.weight
+        # print("hq_token_weight:",hq_token_weight)
         output_tokens = torch.cat([self.iou_token.weight, self.mask_tokens.weight, hq_token_weight], dim=0)
         output_tokens = output_tokens.unsqueeze(0).expand(sparse_prompt_embeddings.size(0), -1, -1)
         tokens = torch.cat((output_tokens, sparse_prompt_embeddings), dim=1)
