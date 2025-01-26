@@ -98,7 +98,7 @@ def parse():
         help='The type of the backbone SAM model. Default to be vit_l.'
     )
     parser.add_argument(
-        '--cat_type', required=True, type=str, choices=['cat-a', 'cat-t'],
+        '--cat_type', required=True, type=str, choices=['cat-a', 'cat-t','reins'],
         help='The type of the CAT-SAM model. This argument is required.'
     )
     cat_ckpt_dir = '/applications/graduate_design/model/finetuned/cat_sam/'
@@ -248,12 +248,14 @@ def main_worker(worker_id, worker_args):
     if worker_args.sam_type in ['rein_vit_l','rein__vit_h']:
         reins_config=dict(
             token_length=128,
-            link_token_to_query=True,
+            # link_token_to_query=True,
             # lora_dim=16,
             zero_mlp_delta_f=False,  # v2
         )
         if worker_args.rein_type == 'LoRAReins':
             reins_config['lora_dim'] = 16
+        if worker_args.cat_type == 'reins':
+            reins_config['link_token_to_query'] = True
         reins_config['type'] = worker_args.rein_type
         from cat_sam.models.segment_anything_ext import change_rein_cfg
         reins_config = change_rein_cfg(model_type=worker_args.sam_type,rein_cfg=reins_config)

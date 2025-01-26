@@ -276,51 +276,41 @@ class MyCATSAMAImageEncoder3(CATSAMAImageEncoder):
             self, ori_sam, hq_token: torch.Tensor,reins_cfg=None
     ):
         super(MyCATSAMAImageEncoder3, self).__init__(ori_sam=ori_sam,hq_token=hq_token)
-
         self.rein_cfg = reins_cfg
-        reins_cfg['num_layers'] = len(self.sam_img_encoder.blocks)
+        self.rein_enabled_layers = self.sam_img_encoder.global_attn_indexes
+        reins_cfg['num_layers'] = len(self.rein_enabled_layers)
         reins_cfg['embed_dims_ratio'] = 0.25
         reins_cfg['hq_token'] = hq_token
         self.EVP = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                         embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
-        # reins_cfg['EVP_size'] = self.EVP.patch_embed.num_patches
-
-
         rein_cls = cls_dic[reins_cfg['type']]
-
-
-
-        reins_cfg.pop('type')
-        self.hq_token = hq_token
         print(reins_cfg)
-        patch_height = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[0]
-        patch_width = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[1]
+        reins_cfg.pop('type')
+        
         
 
         self.reins = rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
         
-    def get_hq_token(self):
-        return self.reins.get_hq_token()
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         inp = x
         x = self.sam_img_encoder.patch_embed(x)
+        
 
         evp = self.EVP(inp)
         
-
-        
-
+        if self.sam_img_encoder.pos_embed is not None:
+            x = x + self.sam_img_encoder.pos_embed
         interm_embeddings = []
         B, H, W = x.shape[0], x.shape[1], x.shape[2]
         for i, blk in enumerate(self.sam_img_encoder.blocks):
             x = blk(x)
             B, H, W, C = x.shape
             
-            if self.reins is not None:
+            if self.reins is not None and i in self.rein_enabled_layers :
                 x = self.reins.forward(
                     x.view(B, -1, C),
-                    i,
+                    self.rein_enabled_layers.index(i),
                     batch_first=True,
                     has_cls_token=False,
                     evp_feature=evp
@@ -386,6 +376,8 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         for i, blk in enumerate(self.sam_img_encoder.blocks):
             x = blk(x)
             B, H, W, C = x.shape
+            
+            
             
             if self.reins is not None:
                 x = self.reins.forward(

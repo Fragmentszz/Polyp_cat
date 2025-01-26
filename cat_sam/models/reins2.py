@@ -131,10 +131,7 @@ class Reins_Attention4(nn.Module):
         self.token_dim = hq_token.size(-1)
         self.use_softmax = use_softmax
         self.embed_dims_ratio = embed_dims_ratio
-        self.mlp_ratio = 0.125
-
-
-        
+        self.mlp_ratio = 0.125        
         self.freq_nums = 0.25
         self.scale_init = scale_init
         self.create_model()
@@ -192,13 +189,6 @@ class Reins_Attention4(nn.Module):
         # print(hq_token)
         return hq_token
 
-
-
-
-        
-
-
-
     def get_mlps(self, layer: int) -> Tensor:
         if layer == -1:
             # return all
@@ -245,7 +235,6 @@ class Reins_Attention4(nn.Module):
             B, C, H, W = evp_feature.shape
             evp_feature = evp_feature.view(B, C, -1).permute(0,2,1)
             x = x + evp_feature
-        
         if batch_first:
             # H*W,B,C
             x = x.permute(1, 0, 2)
