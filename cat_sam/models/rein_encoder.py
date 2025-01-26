@@ -269,7 +269,6 @@ class MyCATSAMAImageEncoder3(CATSAMAImageEncoder):
         x = self.sam_img_encoder.patch_embed(x)
 
         evp = self.EVP(inp)
-        evp_feature = self.EVP2(inp)
         
 
         
@@ -305,10 +304,11 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         reins_cfg['num_layers'] = len(self.sam_img_encoder.blocks)
         reins_cfg['embed_dims_ratio'] = 0.25
         reins_cfg['hq_token'] = hq_token
-        patch_size = self.sam_img_encoder.img_size // 32
         
-        self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=patch_size,
-                        embed_dim=reins_cfg['token_length'],freq_nums=0.25)
+        
+        self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
+                        embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
+        self.EVP_f = nn.Linear(self.EVP2.patch_embed.num_patches,reins_cfg['token_length'])
         # reins_cfg['EVP_size'] = self.EVP.patch_embed.num_patches
 
 
@@ -340,13 +340,14 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         fB, fC, fH,fW = evp_feature.shape
         # m*c
         evp_feature = evp_feature.reshape(fB,fC,-1)
+        evp_feature = self.EVP_f(evp_feature).permute(0,2,1)
+        
 
         interm_embeddings = []
         B, H, W = x.shape[0], x.shape[1], x.shape[2]
         for i, blk in enumerate(self.sam_img_encoder.blocks):
             x = blk(x)
             B, H, W, C = x.shape
-            
             
             if self.reins is not None:
                 x = self.reins.forward(
