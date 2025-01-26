@@ -1,4 +1,5 @@
 import argparse
+from math import log
 import os
 import random
 from contextlib import nullcontext
@@ -19,7 +20,7 @@ from cat_sam.datasets.whu import WHUDataset
 from cat_sam.datasets.kvasir import KvasirDataset
 from cat_sam.datasets.sbu import SBUDataset
 from cat_sam.datasets.transforms import HorizontalFlip, VerticalFlip, RandomCrop
-from cat_sam.models.modeling import CATSAMT, CATSAMA
+from cat_sam.models.modeling import CATSAMT, CATSAMA,Reins
 from cat_sam.utils.evaluators import SamHQIoU, StreamSegMetrics
 import logging
 # from cat_sam.models.segment_anything_ext
@@ -223,6 +224,8 @@ def main_worker(worker_id, worker_args):
         model_class = CATSAMT
     elif worker_args.cat_type == 'cat-a':
         model_class = CATSAMA
+    elif worker_args.cat_type == 'reins':
+        model_class = Reins
     else:
         raise ValueError(f'invalid cat_type: {worker_args.cat_type}!')
 
@@ -245,13 +248,17 @@ def main_worker(worker_id, worker_args):
     if worker_args.sam_type in ['rein_vit_l','rein__vit_h']:
         reins_config=dict(
             token_length=128,
-            # link_token_to_query=True,
+            link_token_to_query=True,
             # lora_dim=16,
             zero_mlp_delta_f=False,  # v2
         )
+        if worker_args.rein_type == 'LoRAReins':
+            reins_config['lora_dim'] = 16
         reins_config['type'] = worker_args.rein_type
         from cat_sam.models.segment_anything_ext import change_rein_cfg
         reins_config = change_rein_cfg(model_type=worker_args.sam_type,rein_cfg=reins_config)
+        logging.info(f"Reins config:{reins_config}")
+        print(f"Reins config:{reins_config}") 
     # model = model_class(model_type=worker_args.sam_type,rein_cfg=reins_config).to(device=device)
     # if torch.distributed.is_initialized():
     #     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)

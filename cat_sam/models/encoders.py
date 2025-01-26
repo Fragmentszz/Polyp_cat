@@ -124,3 +124,4 @@ class CATSAMAImageEncoder(SAMImageEncodeWrapper):
 
         x = self.sam_img_encoder.neck(x.permute(0, 3, 1, 2))
         return x, interm_embeddings
+

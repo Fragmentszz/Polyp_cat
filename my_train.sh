@@ -1,4 +1,4 @@
-expected_hostname="ins-18857555890"
+expected_hostname="ins-"
 
 
 current_hostname=$(hostname)

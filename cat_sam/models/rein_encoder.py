@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 from cat_sam.models.module_lib import Adapter, PromptGenerator
-from .encoders import CATSAMAImageEncoder,CATSAMTImageEncoder
+from .encoders import CATSAMAImageEncoder,CATSAMTImageEncoder,SAMImageEncodeWrapper
 
 from .reins import Reins,LoRAReins,Reins_Attention,My_LoRAReins,Reins_Attention2,Reins_Attention2_upd,Reins_Attention2_upd2,Reins_Attention3
 
@@ -22,6 +22,44 @@ cls_dic = {
     'Reins_Attention5':Reins_Attention5
 }
 
+class ReinsImageEncoder(SAMImageEncodeWrapper):
+
+    def __init__(
+            self, ori_sam, hq_token: torch.Tensor, reins_cfg = None
+    ):
+        super(ReinsImageEncoder, self).__init__(ori_sam=ori_sam, fix=True)
+
+        self.rein_enabled_layers = self.sam_img_encoder.global_attn_indexes
+        self.rein_cfg = reins_cfg
+
+        rein_cls = cls_dic[reins_cfg['type']]
+        reins_cfg.pop('type')
+        self.reins =  rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
+
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.sam_img_encoder.patch_embed(x)
+
+      
+        if self.sam_img_encoder.pos_embed is not None:
+            x = x + self.sam_img_encoder.pos_embed
+        interm_embeddings = []
+        B, H, W = x.shape[0], x.shape[1], x.shape[2]
+        for i, blk in enumerate(self.sam_img_encoder.blocks):
+            x = blk(x)
+            B, H, W, C = x.shape
+            if self.reins is not None and i in self.rein_enabled_layers :
+                x = self.reins.forward(
+                    x.view(B, -1, C),
+                    self.rein_enabled_layers.index(i),
+                    batch_first=True,
+                    has_cls_token=False,
+                ).view(B, H, W, C)
+            if blk.window_size == 0:
+                interm_embeddings.append(x)
+
+        x = self.sam_img_encoder.neck(x.permute(0, 3, 1, 2))
+        return x, interm_embeddings
 
 class ReinCATSAMTImageEncoder(CATSAMTImageEncoder):
 
