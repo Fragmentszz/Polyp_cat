@@ -318,6 +318,8 @@ class MyCATSAMAImageEncoder3(CATSAMAImageEncoder):
         x = self.sam_img_encoder.neck(x.permute(0, 3, 1, 2))
         return x, interm_embeddings
 
+
+# 4+1 layers
 class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
 
     def __init__(
@@ -328,6 +330,7 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         self.rein_cfg = reins_cfg
         self.rein_enabled_layers = self.sam_img_encoder.global_attn_indexes
         reins_cfg['num_layers'] = len(self.rein_enabled_layers)
+        self.reins_num_layers = len(self.rein_enabled_layers)
         reins_cfg['embed_dims_ratio'] = 0.25
         reins_cfg['hq_token'] = hq_token
         
@@ -344,8 +347,6 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         reins_cfg.pop('type')
         self.hq_token = hq_token
         print(reins_cfg)
-        patch_height = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[0]
-        patch_width = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[1]
         
 
         self.reins = rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
@@ -373,16 +374,24 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
             x = blk(x)
             B, H, W, C = x.shape
             
-            
-            
-            if self.reins is not None and i in self.rein_enabled_layers :
-                x = self.reins.forward(
-                    x.view(B, -1, C),
-                    self.rein_enabled_layers.index(i),
-                    batch_first=True,
-                    has_cls_token=False,
-                    evp_feature=evp_feature
-                ).view(B, H, W, C)
+            if self.reins is not None :
+                if i in self.rein_enabled_layers :
+                    x = self.reins.forward(
+                        x.view(B, -1, C),
+                        self.rein_enabled_layers.index(i),
+                        batch_first=True,
+                        has_cls_token=False,
+                        evp_feature=evp_feature
+                    ).view(B, H, W, C)
+                else:
+                    x = self.reins.forward(
+                        x.view(B, -1, C),
+                        self.reins_num_layers,
+                        batch_first=True,
+                        has_cls_token=False,
+                        evp_feature=evp_feature
+                    ).view(B, H, W, C)
+
             if blk.window_size == 0:
                 interm_embeddings.append(x)
 
