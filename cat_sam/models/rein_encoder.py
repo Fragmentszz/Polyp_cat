@@ -7,7 +7,7 @@ from .encoders import CATSAMAImageEncoder,CATSAMTImageEncoder,SAMImageEncodeWrap
 from .reins import Reins,LoRAReins,Reins_Attention,My_LoRAReins,Reins_Attention2,Reins_Attention2_upd,Reins_Attention2_upd2,Reins_Attention3
 
 from .reins import Reins_Attention3_v2
-from .reins2 import EVP,Reins_Attention4,Reins_Attention5
+from .reins2 import EVP,Reins_Attention4,Reins_Attention5, Reins_Attention6
 cls_dic = {
     'Reins':Reins,
     'LoRAReins':LoRAReins,
@@ -19,7 +19,8 @@ cls_dic = {
     'Reins_Attention3':Reins_Attention3,
     'Reins_Attention3_v2':Reins_Attention3_v2,
     'Reins_Attention4':Reins_Attention4,
-    'Reins_Attention5':Reins_Attention5
+    'Reins_Attention5':Reins_Attention5,
+    'Reins_Attention6':Reins_Attention6
 }
 
 class ReinsImageEncoder(SAMImageEncodeWrapper):
@@ -383,14 +384,14 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
                         has_cls_token=False,
                         evp_feature=evp_feature
                     ).view(B, H, W, C)
-                else:
-                    x = self.reins.forward(
-                        x.view(B, -1, C),
-                        self.reins_num_layers,
-                        batch_first=True,
-                        has_cls_token=False,
-                        evp_feature=evp_feature
-                    ).view(B, H, W, C)
+                # else:
+                #     x = self.reins.forward(
+                #         x.view(B, -1, C),
+                #         self.reins_num_layers,
+                #         batch_first=True,
+                #         has_cls_token=False,
+                #         evp_feature=evp_feature
+                #     ).view(B, H, W, C)
 
             if blk.window_size == 0:
                 interm_embeddings.append(x)

@@ -63,7 +63,7 @@ def build_model(worker_args):
     reins_config = None
     if worker_args.sam_type in ['rein_vit_l','rein__vit_h']:
         reins_config=dict(
-            token_length=100,
+            token_length=128,
             # link_token_to_query=True,
             # lora_dim=16,
             zero_mlp_delta_f=False,  # v2
@@ -145,8 +145,66 @@ def test(test_dataloader,model):
         print(f'Mean val iou: {sum(batch_iou) / len(batch_iou)}')
     print('Test Done!')
 
+import cv2
+def get_dif(gt,res):
+    
+def test_save(test_dataloader,model,save_path=None):
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+    
+    with torch.no_grad():
+        batch_dice = []
+        batch_gd = []
+        batch_iou = []
+        name = 0
+        for test_step, batch in enumerate(tqdm(test_dataloader)):
+            batch = batch_to_cuda(batch, device)
+            model.set_infer_img(img=batch['images'])
 
+            masks_pred = model.infer(box_coords=batch['box_coords'])
+            masks_gt = batch['gt_masks']
+            
+            for mask_pred, mask_gt in zip(masks_pred, masks_gt):
+                mask_pred = mask_pred.cpu().numpy()
+                mask_gt = mask_gt.cpu().numpy()
+                gt = mask_gt
+                
+                gt = np.asarray(gt, np.float32)
+                gt /= (gt.max() + 1e-8)
+                
+                dice = DiceMetric()
+                gd =  GeneralizedDiceScore()
+                iou = MeanIoU()
+                
+                res = torch.tensor(mask_pred)
+                res = F.interpolate(res, size=gt.shape, mode='bilinear', align_corners=False)
+                res = res.sigmoid().data.cpu().numpy().squeeze()
+                res = (res - res.min()) / (res.max() - res.min() + 1e-8)
+                res = res > 0.5
+                res = torch.tensor(res).reshape(1,1,res.shape[0],res.shape[1])
+                gt = torch.tensor(gt).reshape(1,1,gt.shape[0],gt.shape[1])
+                dice(res, gt)
+                gd(res, gt)
+                iou(res, gt)
+                final_dice = dice.aggregate().numpy()[0]
+                final_gd = gd.aggregate().numpy()[0]
+                final_iou = iou.aggregate().numpy()[0]
+                batch_dice.append(final_dice)
+                batch_gd.append(final_gd)
+                batch_iou.append(final_iou)
+                print('save img to: ', save_path + '/'+ name)
+                res = res.squeeze().cpu().numpy()
+                res = np.round(res * 255).astype(np.uint8)
 
+                cv2.imwrite(os.path.join(save_path, name), res)
+        logging.info(f'Mean val dice: {sum(batch_dice) / len(batch_dice)}')
+        logging.info(f'Mean val gd: {sum(batch_gd) / len(batch_gd)}')
+        logging.info(f'Mean val iou: {sum(batch_iou) / len(batch_iou)}')
+        
+        print(f'Mean val dice: {sum(batch_dice) / len(batch_dice)}')
+        print(f'Mean val gd: {sum(batch_gd) / len(batch_gd)}')
+        print(f'Mean val iou: {sum(batch_iou) / len(batch_iou)}')
+    print('Test Done!')
 test_args = parse()
 used_gpu = get_idle_gpu(gpu_num=1)
 os.environ['CUDA_VISIBLE_DEVICES'] = str(used_gpu[0])
