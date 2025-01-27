@@ -147,6 +147,15 @@ def test(test_dataloader,model):
 
 import cv2
 def get_dif(gt,res):
+    res_1_gt_0 = np.logical_and(res, np.logical_not(gt))
+    res_0_gt_1 = np.logical_and(np.logical_not(res), gt)
+    res_1_gt_1 = np.logical_and(res, gt)
+    diff = np.zeros((gt.shape[0], gt.shape[1], 3), dtype=np.uint8)
+    diff[res_1_gt_0] = [0, 255, 0]
+    diff[res_0_gt_1] = [255, 0, 0]
+    diff[res_1_gt_1] = [255, 255, 255]
+    return diff
+
     
 def test_save(test_dataloader,model,save_path=None):
     if not os.path.exists(save_path):
@@ -196,7 +205,10 @@ def test_save(test_dataloader,model,save_path=None):
                 res = res.squeeze().cpu().numpy()
                 res = np.round(res * 255).astype(np.uint8)
 
-                cv2.imwrite(os.path.join(save_path, name), res)
+                diff = get_dif(gt.squeeze(),res)
+
+                cv2.imwrite(os.path.join(save_path, name), diff)
+                name += 1
         logging.info(f'Mean val dice: {sum(batch_dice) / len(batch_dice)}')
         logging.info(f'Mean val gd: {sum(batch_gd) / len(batch_gd)}')
         logging.info(f'Mean val iou: {sum(batch_iou) / len(batch_iou)}')
