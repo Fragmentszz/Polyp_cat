@@ -322,7 +322,6 @@ class MyCATSAMAImageEncoder3(CATSAMAImageEncoder):
 
 # 4+1 layers
 class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
-
     def __init__(
             self, ori_sam, hq_token: torch.Tensor,reins_cfg=None
     ):
@@ -334,6 +333,7 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         self.reins_num_layers = len(self.rein_enabled_layers)
         reins_cfg['embed_dims_ratio'] = 0.25
         reins_cfg['hq_token'] = hq_token
+        self.if_evp_feature = reins_cfg['if_evp_feature'] if 'if_evp_feature' in reins_cfg else True
         
         
         self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
@@ -382,7 +382,7 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
                         self.rein_enabled_layers.index(i),
                         batch_first=True,
                         has_cls_token=False,
-                        evp_feature=evp_feature
+                        evp_feature= (evp_feature if self.if_evp_feature else None)
                     ).view(B, H, W, C)
                 # else:
                 #     x = self.reins.forward(
