@@ -327,7 +327,6 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
     ):
         super(MyCATSAMAImageEncoder4, self).__init__(ori_sam=ori_sam,hq_token=hq_token)
 
-        self.rein_cfg = reins_cfg
         self.rein_enabled_layers = self.sam_img_encoder.global_attn_indexes
         reins_cfg['num_layers'] = len(self.rein_enabled_layers)
         self.reins_num_layers = len(self.rein_enabled_layers)
@@ -335,20 +334,18 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         reins_cfg['hq_token'] = hq_token
         self.if_evp_feature = reins_cfg['if_evp_feature'] if 'if_evp_feature' in reins_cfg else True
         
-        
         self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                         embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
         self.EVP_f = nn.Linear(self.EVP2.patch_embed.num_patches,reins_cfg['token_length'])
-
-
         rein_cls = cls_dic[reins_cfg['type']]
-
-
-
-        reins_cfg.pop('type')
         self.hq_token = hq_token
-        print(reins_cfg)
         
+        required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f']
+        self.rein_cfg = {}
+
+        for key in required_keys:
+            if key in reins_cfg:
+                self.rein_cfg[key] = reins_cfg[key]
 
         self.reins = rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
         
@@ -358,14 +355,15 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         inp = x
         x = self.sam_img_encoder.patch_embed(x)
-
-        evp_feature = self.EVP2(inp)
+        if self.if_evp_feature:
+            evp_feature = self.EVP2(inp)
+            fB, fC, fH,fW = evp_feature.shape
+            # m*c
+            evp_feature = evp_feature.reshape(fB,fC,-1)
+            evp_feature = self.EVP_f(evp_feature).permute(0,2,1)
+        else:
+            evp_feature = None
         
-
-        fB, fC, fH,fW = evp_feature.shape
-        # m*c
-        evp_feature = evp_feature.reshape(fB,fC,-1)
-        evp_feature = self.EVP_f(evp_feature).permute(0,2,1)
         if self.sam_img_encoder.pos_embed is not None:
             x = x + self.sam_img_encoder.pos_embed
 
@@ -382,7 +380,7 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
                         self.rein_enabled_layers.index(i),
                         batch_first=True,
                         has_cls_token=False,
-                        evp_feature= (evp_feature if self.if_evp_feature else None)
+                        evp_feature= evp_feature
                     ).view(B, H, W, C)
                 # else:
                 #     x = self.reins.forward(

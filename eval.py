@@ -51,6 +51,10 @@ def parse():
         '--rein_type', required=True, type=str, default=None,
         help="the type of rein"
     )
+    parser.add_argument(
+        '--save_path', required=False, type=str, default=None,
+        help=""
+    )
     return parser.parse_args()
 
 import logging
@@ -146,14 +150,24 @@ def test(test_dataloader,model):
     print('Test Done!')
 
 import cv2
+from PIL import Image as Image
 def get_dif(gt,res):
     res_1_gt_0 = np.logical_and(res, np.logical_not(gt))
     res_0_gt_1 = np.logical_and(np.logical_not(res), gt)
     res_1_gt_1 = np.logical_and(res, gt)
+    # print((gt.shape[0], gt.shape[1], 3))
     diff = np.zeros((gt.shape[0], gt.shape[1], 3), dtype=np.uint8)
     diff[res_1_gt_0] = [0, 255, 0]
     diff[res_0_gt_1] = [255, 0, 0]
+    
     diff[res_1_gt_1] = [255, 255, 255]
+    # print(res_0_gt_1.sum())
+    # print(res_1_gt_0.sum())
+    # print(diff)
+    diff = Image.fromarray(diff)
+    
+
+    
     return diff
 
     
@@ -201,13 +215,14 @@ def test_save(test_dataloader,model,save_path=None):
                 batch_dice.append(final_dice)
                 batch_gd.append(final_gd)
                 batch_iou.append(final_iou)
-                print('save img to: ', save_path + '/'+ name)
+                # print('save img to: ', save_path + '/'+ name)
                 res = res.squeeze().cpu().numpy()
                 res = np.round(res * 255).astype(np.uint8)
 
                 diff = get_dif(gt.squeeze(),res)
-
-                cv2.imwrite(os.path.join(save_path, name), diff)
+                
+                diff.save(os.path.join(save_path, str(name)+".png"))
+                # cv2.imwrite(os.path.join(save_path, str(name)+".png"), diff)
                 name += 1
         logging.info(f'Mean val dice: {sum(batch_dice) / len(batch_dice)}')
         logging.info(f'Mean val gd: {sum(batch_gd) / len(batch_gd)}')
@@ -233,7 +248,7 @@ if __name__ == '__main__':
     model = build_model(test_args)
     if test_args.dataset == 'divide':
         test_datasets = ['CVC-300', 'CVC-ClinicDB', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'Kvasir']
-        # test_datasets = ['Kvasir']
+        
         for dataset in test_datasets:
             test_dataset = dataset_class(
                 data_dir=join(test_args.data_dir, dataset)
@@ -245,6 +260,9 @@ if __name__ == '__main__':
             )
             logging.info(f'Testing on {dataset} dataset...')
             print(f'Testing on {dataset} dataset...')
-
-            test(test_dataloader,model)
+            if test_args.save_path is not None:
+                save_path = os.path.join(test_args.save_path,dataset)
+                test_save(test_dataloader,model,save_path)
+            else:
+                test(test_dataloader,model)
     

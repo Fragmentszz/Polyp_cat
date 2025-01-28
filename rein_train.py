@@ -123,6 +123,10 @@ def parse():
         '--rein_type', required=True, type=str, default=None,
         help="the type of rein"
     )
+    parser.add_argument(
+        '--evp_feature', required=False, type=bool, default=True,
+        help="whether evp_feature is added into tokens"
+    )
     return parser.parse_args()
 
 
