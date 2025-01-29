@@ -332,7 +332,7 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         self.reins_num_layers = len(self.rein_enabled_layers)
         reins_cfg['embed_dims_ratio'] = 0.25
         reins_cfg['hq_token'] = hq_token
-        self.if_evp_feature = reins_cfg['if_evp_feature'] if 'if_evp_feature' in reins_cfg else True
+        self.if_evp_feature = reins_cfg['if_evp_feature'] == 'True'
         
         self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                         embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
@@ -346,7 +346,7 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         for key in required_keys:
             if key in reins_cfg:
                 self.rein_cfg[key] = reins_cfg[key]
-
+        print(self.rein_cfg)
         self.reins = rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
         
     def get_hq_token(self):

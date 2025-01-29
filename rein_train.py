@@ -102,6 +102,7 @@ def parse():
         '--cat_type', required=True, type=str, choices=['cat-a', 'cat-t','reins'],
         help='The type of the CAT-SAM model. This argument is required.'
     )
+    
     cat_ckpt_dir = '/applications/graduate_design/model/finetuned/cat_sam/'
     CAT_ckpt_path_dict = dict(
         cat_t=dict(
@@ -124,8 +125,8 @@ def parse():
         help="the type of rein"
     )
     parser.add_argument(
-        '--evp_feature', required=False, type=bool, default=True,
-        help="whether evp_feature is added into tokens"
+        '--if_evp_feature', required=False, type=str, default='True',choices=['True','False'],
+        help='if the evp_feature is added into tokens'
     )
     return parser.parse_args()
 
@@ -263,6 +264,8 @@ def main_worker(worker_id, worker_args):
             reins_config['lora_dim'] = 16
         if worker_args.cat_type == 'reins':
             reins_config['link_token_to_query'] = True
+        reins_config['if_evp_feature'] = bool(worker_args.if_evp_feature)
+        
         reins_config['type'] = worker_args.rein_type
         from cat_sam.models.segment_anything_ext import change_rein_cfg
         reins_config = change_rein_cfg(model_type=worker_args.sam_type,rein_cfg=reins_config)
@@ -292,7 +295,7 @@ def main_worker(worker_id, worker_args):
 
 
     optimizer = torch.optim.AdamW(
-        params=[p for p in model.parameters() if p.requires_grad], lr=1e-3, weight_decay=1e-4
+        params=[p for p in model.parameters() if p.requires_grad], lr=1e-3, weight_decay=1e-2
     )
     # full-shot
     if worker_args.shot_num is None:
@@ -392,7 +395,7 @@ def main_worker(worker_id, worker_args):
                 logging.info(
                     '#TRAIN#:{} Epoch [{:03d}/{:03d}], Step [{:04d}/{:04d}], total_loss: {:.4f}, '
                     'bce_loss: {:.4f},  dice_loss: {:.4f}'.
-                    format(datetime.now(), epoch, max_epoch_num+1, train_step, total_step, 
+                    format(datetime.now(), epoch, max_epoch_num, train_step, total_step, 
                             loss_dict['total_loss'], loss_dict['bce_loss'], loss_dict['dice_loss']))
         scheduler.step()
         if train_pbar:
@@ -433,7 +436,7 @@ def main_worker(worker_id, worker_args):
                 if val_step % 40 == 0 or val_step == 1:
                     logging.info(
                         '#VAL#:{} Epoch [{:03d}/{:03d}], Step [{:04d}/200],  '.
-                        format(datetime.now(), epoch, max_epoch_num+1, val_step))
+                        format(datetime.now(), epoch, max_epoch_num, val_step))
 
             miou = iou_eval.compute()[0]['Mean Foreground IoU']
             logging.info(f'#VAL#:Epoch:{epoch}  miou:{miou}')

@@ -496,7 +496,6 @@ class Reins_Attention6(nn.Module):
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True,evp_feature=None) -> torch.Tensor:
         assert layer >= 0 or layer < self.num_layers , "layer should be in range of 0 to num_layers"
-        
         if batch_first:
             # H*W,B,C
             x = x.permute(1, 0, 2)
