@@ -128,6 +128,10 @@ def parse():
         '--if_evp_feature', required=False, type=str, default='True',choices=['True','False'],
         help='if the evp_feature is added into tokens'
     )
+    parser.add_argument(
+        '--local_block', required=False, type=str, default='False',choices=['True','False'],
+        help='if the locak_attention block need to be reined'
+    )
     return parser.parse_args()
 
 
@@ -264,7 +268,8 @@ def main_worker(worker_id, worker_args):
             reins_config['lora_dim'] = 16
         if worker_args.cat_type == 'reins':
             reins_config['link_token_to_query'] = True
-        reins_config['if_evp_feature'] = bool(worker_args.if_evp_feature)
+        reins_config['if_evp_feature'] = worker_args.if_evp_feature
+        reins_config['local_block'] = worker_args.local_block
         
         reins_config['type'] = worker_args.rein_type
         from cat_sam.models.segment_anything_ext import change_rein_cfg

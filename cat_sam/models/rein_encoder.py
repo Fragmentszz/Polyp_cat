@@ -333,12 +333,14 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         reins_cfg['embed_dims_ratio'] = 0.25
         reins_cfg['hq_token'] = hq_token
         self.if_evp_feature = reins_cfg['if_evp_feature'] == 'True'
+        self.if_local_block = reins_cfg['local_block'] == 'True'
         
         self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                         embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
         self.EVP_f = nn.Linear(self.EVP2.patch_embed.num_patches,reins_cfg['token_length'])
         rein_cls = cls_dic[reins_cfg['type']]
         self.hq_token = hq_token
+        
         
         required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f']
         self.rein_cfg = {}
@@ -382,14 +384,14 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
                         has_cls_token=False,
                         evp_feature= evp_feature
                     ).view(B, H, W, C)
-                # else:
-                #     x = self.reins.forward(
-                #         x.view(B, -1, C),
-                #         self.reins_num_layers,
-                #         batch_first=True,
-                #         has_cls_token=False,
-                #         evp_feature=evp_feature
-                #     ).view(B, H, W, C)
+                elif self.if_local_block:
+                    x = self.reins.forward(
+                        x.view(B, -1, C),
+                        self.reins_num_layers,
+                        batch_first=True,
+                        has_cls_token=False,
+                        evp_feature=evp_feature
+                    ).view(B, H, W, C)
 
             if blk.window_size == 0:
                 interm_embeddings.append(x)
