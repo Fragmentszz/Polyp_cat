@@ -334,8 +334,12 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         self.reins_num_layers = len(self.rein_enabled_layers)
         reins_cfg['embed_dims_ratio'] = 0.25
         reins_cfg['hq_token'] = hq_token
-        self.if_evp_feature = reins_cfg['if_evp_feature'] == 'True'
-        self.if_local_block = reins_cfg['local_block'] == 'True'
+        if type(reins_cfg['if_evp_feature']) == str:
+            self.if_evp_feature = reins_cfg['if_evp_feature'] == 'True'
+        else:
+            self.if_evp_feature = reins_cfg['if_evp_feature']
+        if type(reins_cfg['local_block']) == str:
+            self.if_local_block = reins_cfg['local_block'] == 'True'
         
         self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                         embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
