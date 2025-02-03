@@ -27,7 +27,7 @@ from os.path import join
 import torch
 from train import batch_to_cuda
 import tqdm
-def test_save(test_dataloader,model,save_path=None):
+def test_save(test_dataloader,model,device,save_path=None):
     if save_path is not None and not os.path.exists(save_path):
         os.mkdir(save_path)
     

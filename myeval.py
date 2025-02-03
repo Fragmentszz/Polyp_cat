@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from misc import get_idle_gpu, set_randomness
-from train import batch_to_cuda
+
 
 from cat_sam.datasets.whu import WHUDataset
 from cat_sam.datasets.kvasir import KvasirDataset_test
@@ -50,6 +50,11 @@ logging.basicConfig(filename=os.path.join(test_args.log_dir,'eval.log'), format=
                     level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
 os.environ['CUDA_VISIBLE_DEVICES'] = str(used_gpu[0])
 from cat_sam.config import load_config
+
+
+
+
+
 if __name__ == '__main__':
     set_randomness()
     logging.info(f'Now using GPU: {used_gpu[0]}')
@@ -71,14 +76,29 @@ if __name__ == '__main__':
             logging.info(f'Testing on {dataset} dataset...')
             print(f'Testing on {dataset} dataset...')
             if test_args.save_path is not None:
-                test_save(test_dataloader,model,test_args.save_path)
+                dice,gd,iou = test_save(test_dataloader,model,device,test_args.save_path)
             else:
-                test_save(test_dataloader,model)
+                dice,gd,iou = test_save(test_dataloader,model,device)
+            logging.info(f'Mean val dice: {dice}')
+            logging.info(f'Mean val gd: {gd}')
+            logging.info(f'Mean val iou: {iou}')
+            
+            print(f'Mean val dice: {dice}')
+            print(f'Mean val gd: {gd}')
+            print(f'Mean val iou: {iou}')
+
     else:
         test_dataloader = test_dl
         logging.info(f'Testing on {dataset} dataset...')
         print(f'Testing on {dataset} dataset...')
         if test_args.save_path is not None:
-            test_save(test_dataloader,model,test_args.save_path)
+                dice,gd,iou = test_save(test_dataloader,model,device,test_args.save_path)
         else:
-            test_save(test_dataloader,model)
+            dice,gd,iou = test_save(test_dataloader,model,device)
+        logging.info(f'Mean val dice: {dice}')
+        logging.info(f'Mean val gd: {gd}')
+        logging.info(f'Mean val iou: {iou}')
+            
+        print(f'Mean val dice: {dice}')
+        print(f'Mean val gd: {gd}')
+        print(f'Mean val iou: {iou}')
