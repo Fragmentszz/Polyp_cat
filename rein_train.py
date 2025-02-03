@@ -132,6 +132,10 @@ def parse():
         '--local_block', required=False, type=str, default='False',choices=['True','False'],
         help='if the locak_attention block need to be reined'
     )
+    parser.add_argument(
+        '--connect_hq_token', required=False, type=str, default='True',choices=['True','False'],
+        help='if B concat with hq_token'
+    )
     return parser.parse_args()
 
 
@@ -270,6 +274,7 @@ def main_worker(worker_id, worker_args):
             reins_config['link_token_to_query'] = True
         reins_config['if_evp_feature'] = worker_args.if_evp_feature
         reins_config['local_block'] = worker_args.local_block
+        reins_config['connect_hq_token'] = worker_args.connect_hq_token
         
         reins_config['type'] = worker_args.rein_type
         from cat_sam.models.segment_anything_ext import change_rein_cfg

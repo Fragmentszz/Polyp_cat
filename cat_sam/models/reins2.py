@@ -394,7 +394,7 @@ class Reins_Attention5(nn.Module):
         
 class Reins_Attention6(nn.Module):
     def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,hq_token: torch.Tensor = None, 
-                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False) -> None:
+                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False,connect_with_hq_token=True) -> None:
         super().__init__()
         self.embed_dims = embed_dims
         self.token_length = token_length
@@ -405,6 +405,7 @@ class Reins_Attention6(nn.Module):
         self.use_softmax = use_softmax
         self.embed_dims_ratio = embed_dims_ratio
         self.mlp_ratio = 0.125
+        self.connect_with_hq_token = connect_with_hq_token
 
         
         self.freq_nums = 0.25
@@ -425,7 +426,10 @@ class Reins_Attention6(nn.Module):
         self.mlp_token2feat = nn.Linear(self.embed_dims, self.embed_dims)
         self.mlp_delta_f = nn.Linear(self.embed_dims, self.embed_dims)
         self.A = nn.Parameter(torch.empty([1, self.token_length, round(self.embed_dims*self.embed_dims_ratio)]))
-        self.B = nn.Parameter(torch.empty([self.num_layers + 1,round(self.embed_dims*self.embed_dims_ratio)-1,self.token_dim]))
+        if self.connect_with_hq_token:
+            self.B = nn.Parameter(torch.empty([self.num_layers + 1,round(self.embed_dims*self.embed_dims_ratio)-1,self.token_dim]))
+        else:
+            self.B = nn.Parameter(torch.empty([self.num_layers + 1,round(self.embed_dims*self.embed_dims_ratio),self.token_dim]))
 
         # self.hq2token = nn.Linear(self.token_dim, self.embed_dims)
         
@@ -449,6 +453,8 @@ class Reins_Attention6(nn.Module):
             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
             if m.bias is not None:
                 m.bias.data.zero_() 
+        elif isinstance(m, nn.Parameter):
+            nn.init.kaiming_uniform_(m, a=math.sqrt(5))
 
 
     def get_mlps(self, layer: int) -> Tensor:
@@ -487,7 +493,8 @@ class Reins_Attention6(nn.Module):
             return tokens
         else:
             B = self.B[layer]
-            B = torch.concat([self.hq_token,B],dim=0)
+            if self.connect_with_hq_token:
+                B = torch.concat([self.hq_token,B],dim=0)
             B = self.f(B)
             tokens = self.A[0] @ B
 
@@ -522,7 +529,7 @@ class Reins_Attention7(Reins_Attention6):
     def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,hq_token: torch.Tensor = None, 
                  scale_init: float = 0.001, zero_mlp_delta_f: bool = False) -> None:
         super().__init__(
-            embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f
+            embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f,connect_with_hq_token=connect_hq_token
         )
 
     def get_tokens(self, layer: int) -> Tensor:
@@ -531,28 +538,46 @@ class Reins_Attention7(Reins_Attention6):
             return None
         else:
             B = self.B[layer]
-            B = torch.concat([self.hq_token,B],dim=0)
+            if self.connect_with_hq_token:
+                B = torch.concat([self.hq_token,B],dim=0)
             # B = self.f(B)
             tokens = self.A[0] @ B
             return self.f(tokens)
 
 class Reins_Attention8(Reins_Attention6):
     def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,hq_token: torch.Tensor = None, 
-                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False) -> None:
+                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False,connect_hq_token=True) -> None:
         
         super().__init__(
-            embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f
+            embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f,connect_with_hq_token=connect_hq_token
         )
+        if self.connect_with_hq_token:
+            self.linear_hq_token = nn.Linear(self.token_dim,self.embed_dims)
 
-        self.linear_tokens_change = nn.Linear(self.token_dim,self.embed_dims)
+
+
+    def create_model(self):
+        super().create_model()
+        del self.B
+        if self.connect_with_hq_token:
+            self.B = nn.Parameter(torch.empty([self.num_layers + 1,round(self.embed_dims*self.embed_dims_ratio)-1,self.embed_dims]))
+        else:
+            self.B = nn.Parameter(torch.empty([self.num_layers + 1,round(self.embed_dims*self.embed_dims_ratio),self.embed_dims]))
+
+        nn.init.kaiming_uniform_(self.B, a=math.sqrt(5))
 
     def get_tokens(self, layer: int) -> Tensor:
         if layer == -1:
             raise TypeError
             return None
         else:
+
+            # print(torch.any(torch.isnan(self.A)),torch.any(torch.isnan(self.B)))
             B = self.B[layer]
-            B = torch.concat([self.hq_token,B],dim=0)
-            # B = self.f(B)
+            
+            
+            
+            if self.connect_with_hq_token:
+                B = torch.concat([self.linear_hq_token(self.hq_token),B],dim=0)
             tokens = self.A[0] @ B
-            return self.linear_tokens_change(tokens)
+            return tokens
