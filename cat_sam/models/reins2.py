@@ -516,4 +516,43 @@ class Reins_Attention6(nn.Module):
         if batch_first:
             x = x.permute(1, 0, 2)
         return x
+    
+
+class Reins_Attention7(Reins_Attention6):
+    def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,hq_token: torch.Tensor = None, 
+                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False) -> None:
+        super().__init__(
+            embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f
+        )
+
+    def get_tokens(self, layer: int) -> Tensor:
+        if layer == -1:
+            raise TypeError
+            return None
+        else:
+            B = self.B[layer]
+            B = torch.concat([self.hq_token,B],dim=0)
+            # B = self.f(B)
+            tokens = self.A[0] @ B
+            return self.f(tokens)
+
+class Reins_Attention8(Reins_Attention6):
+    def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,hq_token: torch.Tensor = None, 
+                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False) -> None:
         
+        super().__init__(
+            embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f
+        )
+
+        self.linear_tokens_change = nn.Linear(self.token_dim,self.embed_dims)
+
+    def get_tokens(self, layer: int) -> Tensor:
+        if layer == -1:
+            raise TypeError
+            return None
+        else:
+            B = self.B[layer]
+            B = torch.concat([self.hq_token,B],dim=0)
+            # B = self.f(B)
+            tokens = self.A[0] @ B
+            return self.linear_tokens_change(tokens)

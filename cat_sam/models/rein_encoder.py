@@ -7,7 +7,7 @@ from .encoders import CATSAMAImageEncoder,CATSAMTImageEncoder,SAMImageEncodeWrap
 from .reins import Reins,LoRAReins,Reins_Attention,My_LoRAReins,Reins_Attention2,Reins_Attention2_upd,Reins_Attention2_upd2,Reins_Attention3
 
 from .reins import Reins_Attention3_v2
-from .reins2 import EVP,Reins_Attention4,Reins_Attention5, Reins_Attention6
+from .reins2 import EVP,Reins_Attention4,Reins_Attention5, Reins_Attention6, Reins_Attention7, Reins_Attention8
 cls_dic = {
     'Reins':Reins,
     'LoRAReins':LoRAReins,
@@ -20,7 +20,9 @@ cls_dic = {
     'Reins_Attention3_v2':Reins_Attention3_v2,
     'Reins_Attention4':Reins_Attention4,
     'Reins_Attention5':Reins_Attention5,
-    'Reins_Attention6':Reins_Attention6
+    'Reins_Attention6':Reins_Attention6,
+    'Reins_Attention7':Reins_Attention7,
+    'Reins_Attention8':Reins_Attention8
 }
 
 class ReinsImageEncoder(SAMImageEncodeWrapper):
