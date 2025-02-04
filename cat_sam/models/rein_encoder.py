@@ -340,15 +340,18 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
             self.if_evp_feature = reins_cfg['if_evp_feature']
         if type(reins_cfg['local_block']) == str:
             self.if_local_block = reins_cfg['local_block'] == 'True'
+        else:
+            self.if_local_block = reins_cfg['local_block']
         
         self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                         embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
         self.EVP_f = nn.Linear(self.EVP2.patch_embed.num_patches,reins_cfg['token_length'])
-        rein_cls = cls_dic[reins_cfg['type']]
+        rein_cls = cls_dic[reins_cfg['rein_type']]
         self.hq_token = hq_token
         
         
-        required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f']
+        required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f'
+                         'connect_hq_token']
         self.rein_cfg = {}
 
         for key in required_keys:

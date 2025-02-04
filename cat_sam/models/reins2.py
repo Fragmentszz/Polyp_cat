@@ -527,7 +527,7 @@ class Reins_Attention6(nn.Module):
 
 class Reins_Attention7(Reins_Attention6):
     def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,hq_token: torch.Tensor = None, 
-                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False) -> None:
+                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False,connect_hq_token=True) -> None:
         super().__init__(
             embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f,connect_with_hq_token=connect_hq_token
         )

@@ -4,13 +4,13 @@ from cat_sam.datasets.kvasir import KvasirDataset,KvasirDataset_test
 import torch
 
 def build_model(config,device,local_rank=None):
-    model_type = config['model']['type']
-    if model_type == 'CATSAMT':
-        model_class = CATSAMT(config)
-    elif model_type == 'CATSAMA':
-        model_class = CATSAMA(config)
+    model_type = config['model']['cat_type']
+    if model_type == 'cat-t':
+        model_class = CATSAMT
+    elif model_type == 'cat-a':
+        model_class = CATSAMA
     elif model_type == 'Reins':
-        model_class = Reins(config)
+        model_class = Reins
     else:
         raise ValueError(f"Model type {model_type} not supported")
     

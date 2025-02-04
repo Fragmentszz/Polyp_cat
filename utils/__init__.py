@@ -19,14 +19,14 @@ def get_dif(gt,res):
     
     return diff
 
-
+import torch.nn.functional as F
 from monai.metrics import DiceMetric, MeanIoU, SurfaceDiceMetric, SSIMMetric, GeneralizedDiceScore
 import argparse
 import os
 from os.path import join
 import torch
 from train import batch_to_cuda
-import tqdm
+from tqdm import tqdm
 def test_save(test_dataloader,model,device,save_path=None):
     if save_path is not None and not os.path.exists(save_path):
         os.mkdir(save_path)
@@ -71,11 +71,13 @@ def test_save(test_dataloader,model,device,save_path=None):
                 batch_dice.append(final_dice)
                 batch_gd.append(final_gd)
                 batch_iou.append(final_iou)
-                res = res.squeeze().cpu().numpy()
-                res = np.round(res * 255).astype(np.uint8)
-                gt = gt.squeeze().cpu().numpy()
-                gt = np.round(gt * 255).astype(np.uint8)
+                
+                
                 if save_path is not None:
+                    res = res.squeeze().cpu().numpy()
+                    res = np.round(res * 255).astype(np.uint8)
+                    gt = gt.squeeze().cpu().numpy()
+                    gt = np.round(gt * 255).astype(np.uint8)
                     diff = get_dif(gt,res)
                     
                     diff.save(os.path.join(save_path, str(name)+".png"))
