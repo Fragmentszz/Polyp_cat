@@ -27,9 +27,14 @@ if __name__ == '__main__':
         save_root = f'{root}/{model_name}'
         if not os.path.exists(save_root):
                 os.makedirs(save_root)
-        logging.basicConfig(filename=os.path.join(save_root,'eval.log'), format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
-                            level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
-        
+        logging.basicConfig(filename=os.path.join(save_root, 'eval.log'), 
+                            format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
+                            level=logging.INFO, 
+                            filemode='a', 
+                            datefmt='%Y-%m-%d %I:%M:%S %p')
+        logging.info(
+             f'=====Start Eval: model:{model_name}  dataset:{eval_dataset_config}  save_root:{save_root}'
+        )
         for dl,dataset in zip(dataloaders,test_datasets):
             print(f'Testing on {dataset} dataset...')
             logging.info(f'Testing on {dataset} dataset...')
