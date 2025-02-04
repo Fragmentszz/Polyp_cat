@@ -20,6 +20,7 @@
 # [2025-02-03 11:05:35 PM-eval_group.py-INFO:Mean val iou: 0.9233735775947571]
 
 import re
+from unittest import result
 
 
 def read_from_text(lines):
@@ -59,6 +60,8 @@ def get_last_CVC_300_lines(lines):
     for i in range(len(lines)-1,0,-1):
         if 'Start Eval' in lines[i]:
             return lines[i+1:]
+        elif 'Testing on CVC-300 dataset' in lines[i]:
+            return lines[i:]
     raise ValueError('No CVC-300 dataset found in the log file')
     
 def read_from_log(path):
@@ -70,15 +73,29 @@ def read_from_log(path):
         print('\n'.join(lines))
         return read_from_text(lines)
 import os
+import openpyxl
+
+def write_to_excel(results,src_path,save_path):
+    datasets = ['Kvasir','CVC-ClinicDB','CVC-ColonDB','CVC-300','ETIS']
+    wb = openpyxl.load_workbook(src_path)
+    ws = wb.active
+    row = ws.max_row + 1
+    for model in results:
+        ws.cell(row=row,column=1,value=model)
+        for i in range(5):
+            ws[f'{chr(65+i*2+1)}{row}'] = results[model][datasets[i]][2]
+            ws[f'{chr(65+i*2+2)}{row}'] = results[model][datasets[i]][0]
+        row += 1
+    wb.save(save_path)
 
 
 
 if __name__ == '__main__':
-    group_eval_model = ['6_1','6_3','6_7','7_3','8_2']
-    eval_root = '/remote-home/results'
+    group_eval_model = ['6_1']
+    eval_root = r'C:\Users\FragmentsZ\Desktop\ForCoding\graduation_design\results'
     weights = ['connect_hq_token','local_layer','evp']
+    results = {}
     for model in group_eval_model:
-
         p = int(model.split('_')[1])
         model_name = ''
         for i in range(3):
@@ -88,6 +105,9 @@ if __name__ == '__main__':
         model_name = model_name.strip('+')
         print(model_name)
         for weight in weights:
-            read_from_log(os.path.join(eval_root,model,'eval.log'))
-
+            res = read_from_log(os.path.join(eval_root,model,'eval.log'))
+            results[model_name] = res
+            for key in res:
+                print(key,res[key])
+    write_to_excel(results,r'C:\Users\FragmentsZ\Desktop\ForCoding\graduation_design\results\result.xlsx',r'C:\Users\FragmentsZ\Desktop\ForCoding\graduation_design\results\result2.xlsx')
     
