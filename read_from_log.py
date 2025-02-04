@@ -57,8 +57,8 @@ def read_from_text(lines):
 def get_last_CVC_300_lines(lines):
 
     for i in range(len(lines)-1,0,-1):
-        if 'CVC-300' in lines[i]:
-            return lines[i:]
+        if 'Start Eval' in lines[i]:
+            return lines[i+1:]
     raise ValueError('No CVC-300 dataset found in the log file')
     
 def read_from_log(path):
@@ -70,9 +70,12 @@ def read_from_log(path):
         print('\n'.join(lines))
         return read_from_text(lines)
 import os
+
+
+
 if __name__ == '__main__':
     group_eval_model = ['6_1','6_3','6_7','7_3','8_2']
-    eval_root = 'C:/Users/FragmentsZ/Desktop/ForCoding/graduation_design/results'
+    eval_root = '/remote-home/results'
     weights = ['connect_hq_token','local_layer','evp']
     for model in group_eval_model:
 
