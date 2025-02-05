@@ -52,7 +52,6 @@ def read_from_text(lines):
             iou = None
             gd = None
             dice = None
-    print(results)
     return results
 
 def get_last_CVC_300_lines(lines):
@@ -70,7 +69,6 @@ def read_from_log(path):
         lines = f.readlines()
         
         lines = get_last_CVC_300_lines(lines)
-        print('\n'.join(lines))
         return read_from_text(lines)
 import os
 import openpyxl
@@ -91,8 +89,8 @@ def write_to_excel(results,src_path,save_path):
 
 
 if __name__ == '__main__':
-    group_eval_model = ['6_1']
-    eval_root = r'C:\Users\FragmentsZ\Desktop\ForCoding\graduation_design\results'
+    group_eval_model = ['6_1','6_3','6_7','7_3','8_2']
+    eval_root = r'/remote-home/results'
     weights = ['connect_hq_token','local_layer','evp']
     results = {}
     for model in group_eval_model:
@@ -102,12 +100,12 @@ if __name__ == '__main__':
             if p % 2 == 1:
                 model_name += weights[i] + '+'
             p = p // 2
-        model_name = model_name.strip('+')
-        print(model_name)
+        model_name = model + '_' + model_name.strip('+')
         for weight in weights:
             res = read_from_log(os.path.join(eval_root,model,'eval.log'))
             results[model_name] = res
+            print(model_name)
             for key in res:
                 print(key,res[key])
-    write_to_excel(results,r'C:\Users\FragmentsZ\Desktop\ForCoding\graduation_design\results\result.xlsx',r'C:\Users\FragmentsZ\Desktop\ForCoding\graduation_design\results\result2.xlsx')
+    write_to_excel(results,os.path.join(eval_root,'result.xlsx'),os.path.join(eval_root,'result2.xlsx'))
     

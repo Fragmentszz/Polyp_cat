@@ -53,7 +53,7 @@ def worker_init_fn(worker_id: int, base_seed: int, same_worker_seed: bool = True
 def build_dataloader_train(config,max_object_num=None,local_rank=None):
     dataset_dir = config['dataset']['data_dir']
     dataset_class = config['dataset']['dataset']
-    if dataset_class == 'kvasir':
+    if dataset_class == 'polyp' or dataset_class == 'kvasir':
         dataset_class = KvasirDataset
     elif dataset_class == 'kvasir_test':
         dataset_class = KvasirDataset_test

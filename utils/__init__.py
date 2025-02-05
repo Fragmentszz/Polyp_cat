@@ -84,7 +84,17 @@ def test_save(test_dataloader,model,device,save_path=None):
                     name += 1
         return sum(batch_dice) / len(batch_dice),sum(batch_gd) / len(batch_gd),sum(batch_iou) / len(batch_iou)
 
-
+def batch_to_cuda(batch, device):
+    for key in batch.keys():
+        if key in ['images', 'gt_masks', 'point_coords', 'box_coords', 'noisy_object_masks', 'object_masks']:
+            batch[key] = [
+                item.to(device=device, dtype=torch.float32) if item is not None else None for item in batch[key]
+            ]
+        elif key in ['point_labels']:
+            batch[key] = [
+                item.to(device=device, dtype=torch.long) if item is not None else None for item in batch[key]
+            ]
+    return batch
 if __name__ == '__main__':
     gt = np.zeros((512,512))
     res = np.zeros((512,512))
