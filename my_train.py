@@ -93,6 +93,22 @@ def main_worker(worker_id, worker_args):
     
     model_config = load_config(worker_args.model_config)
     dataset_config = load_config(worker_args.dataset_config)
+    if not os.path.exists(worker_args.exp_dir):
+        os.mkdir(worker_args.exp_dir)
+    print(model_config)
+    reins_config = model_config['model']['reins_config']
+    
+    exp_path = join(
+        worker_args.exp_dir,
+        f"{reins_config['rein_type']}{'_evp_feature' if reins_config['if_evp_feature'] else ''}_{'4+1_layer' if reins_config['local_block'] else '4_layer'}{'_connect_hq_token' if reins_config['connect_hq_token'] else ''}"
+
+    )
+    os.makedirs(exp_path, exist_ok=True)
+    logging.basicConfig(filename=os.path.join(exp_path,'log.log'), format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
+                    level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
+    logging.info(f"{reins_config['rein_type']}{'_evp_feature' if reins_config['if_evp_feature'] else ''}_{'4+1_layer' if reins_config['local_block'] else '4_layer'}{'_connect_hq_token' if reins_config['connect_hq_token'] else ''}")
+    logging.info("Config")
+    logging.info(f"Args:{model_config['model']}")
     gpu_num = len(worker_args.used_gpu)
     world_size = os.environ['WORLD_SIZE'] if 'WORLD_SIZE' in os.environ.keys() else gpu_num
     base_rank = os.environ['RANK'] if 'RANK' in os.environ.keys() else 0
@@ -113,7 +129,7 @@ def main_worker(worker_id, worker_args):
 
 
     optimizer = torch.optim.AdamW(
-        params=[p for p in model.parameters() if p.requires_grad], lr=1e-3, weight_decay=1e-2
+        params=[p for p in model.parameters() if p.requires_grad], lr=1e-4, weight_decay=1e-2
     )
     max_epoch_num, valid_per_epochs = 20, 2
 
@@ -126,14 +142,7 @@ def main_worker(worker_id, worker_args):
     class_names = ['Background', 'Foreground']
     iou_eval = StreamSegMetrics(class_names=class_names)
 
-    if not os.path.exists(worker_args.exp_dir):
-        os.mkdir(worker_args.exp_dir)
-    reins_config = model_config['reins_config']
-    exp_path = join(
-        worker_args.exp_dir,
-        f'{reins_config['rein_type']}{'_evp_feature' if reins_config['if_evp_feature'] else ''}_{'4+1_layer' if reins_config['local_block'] else '4_layer'}{'_connect_hq_token' if reins_config['connect_hq_token'] else ''}'
-    )
-    os.makedirs(exp_path, exist_ok=True)
+    
     
     for epoch in range(1, max_epoch_num + 1):
         if hasattr(train_dataloader.sampler, 'set_epoch'):
@@ -222,10 +231,7 @@ def main_worker(worker_id, worker_args):
 
                 with torch.no_grad():
                     val_model.set_infer_img(img=batch['images'])
-                    if worker_args.dataset == 'm_roads':
-                        masks_pred = val_model.infer(point_coords=batch['point_coords'])
-                    else:
-                        masks_pred = val_model.infer(box_coords=batch['box_coords'])
+                    masks_pred = val_model.infer(box_coords=batch['box_coords'])
 
                 masks_gt = batch['gt_masks']
                 for masks in [masks_pred, masks_gt]:

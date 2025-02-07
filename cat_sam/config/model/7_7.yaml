@@ -18,4 +18,4 @@ model:
     connect_hq_token: True
     token_length: 128
     zero_mlp_delta_f: False
-  ckpt_path: /applications/graduate_design/model/finetuned/cat_sam/7_3/best_model.pth
+  ckpt_path: /applications/graduate_design/model/finetuned/cat_sam/7_7/best_model.pth
