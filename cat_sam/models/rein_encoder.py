@@ -349,15 +349,15 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         rein_cls = cls_dic[reins_cfg['rein_type']]
         self.hq_token = hq_token
         
-        
-        required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f'
+        print("==============look:",'connect_hq_token' in reins_cfg)
+        required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f',
                          'connect_hq_token']
         self.rein_cfg = {}
 
         for key in required_keys:
             if key in reins_cfg:
                 self.rein_cfg[key] = reins_cfg[key]
-        print(self.rein_cfg)
+        print(self.rein_cfg.keys())
         self.reins = rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
         
     def get_hq_token(self):

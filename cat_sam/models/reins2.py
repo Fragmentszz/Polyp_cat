@@ -540,6 +540,7 @@ class Reins_Attention7(Reins_Attention6):
             B = self.B[layer]
             if self.connect_with_hq_token:
                 B = torch.concat([self.hq_token,B],dim=0)
+                
             # B = self.f(B)
             tokens = self.A[0] @ B
             return self.f(tokens)

@@ -89,7 +89,7 @@ def write_to_excel(results,src_path,save_path):
 
 
 if __name__ == '__main__':
-    group_eval_model = ['6_1','6_3','6_7','7_3','8_2']
+    group_eval_model = ['6_1','6_3','6_7','7_3','7-5','7-6','7-7','8_2']
     eval_root = r'/remote-home/results'
     weights = ['connect_hq_token','local_layer','evp']
     results = {}
