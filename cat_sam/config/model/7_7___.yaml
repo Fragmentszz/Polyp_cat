@@ -19,4 +19,5 @@ model:
     token_length: 128
     zero_mlp_delta_f: False
     c_hq_num: 32
-  ckpt_path: 
+    embed_dims_ratio: 0.125
+  ckpt_path: /applications/graduate_design/model/finetuned/cat_sam/7_7_32/best_model.pth

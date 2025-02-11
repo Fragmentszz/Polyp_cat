@@ -108,9 +108,9 @@ def build_dataloader_eval(config):
             test_dl.append(test_dataloader)
         return test_dl
     else:
-        if dataset not in ['CVC-300', 'CVC-ClinicDB', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'Kvasir']:
-            raise ValueError(f'invalid dataset name: {dataset}!')
-        test_dataset = dataset_class(data_dir=os.join(dataset_dir,dataset))
+        # if dataset not in ['CVC-300', 'CVC-ClinicDB', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'Kvasir']:
+        #     raise ValueError(f'invalid dataset name: {dataset}!')
+        test_dataset = dataset_class(data_dir=os.path.join(dataset_dir,dataset))
         test_dataloader = DataLoader(
             dataset=test_dataset, shuffle=False, drop_last=False,
             batch_size=config['dataset']['batch_size'], num_workers=config['dataset']['num_workers'],

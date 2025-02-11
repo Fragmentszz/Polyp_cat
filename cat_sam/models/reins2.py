@@ -48,9 +48,16 @@ class EVP(nn.Module):
         self.patch_embed = PatchEmbed2(
             img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
         self.freq_nums = freq_nums
-        
+
     def forward(self,x):
         x = self.fft(x,self.freq_nums)
+        # import cv2    
+        # import numpy as np
+        
+        # tmp = x.detach().cpu().numpy()
+        # tmp = (tmp*255).astype(np.uint8)
+        
+        # cv2.imwrite("tmp.jpg",tmp[0].transpose(1,2,0))
         return self.patch_embed(x)
 
     def init_handcrafted(self, x):

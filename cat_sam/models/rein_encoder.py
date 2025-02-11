@@ -350,7 +350,7 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
         self.hq_token = hq_token
         
         print("==============look:",'connect_hq_token' in reins_cfg)
-        required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f',
+        required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f',
                          'connect_hq_token','c_hq_num']
         self.rein_cfg = {}
 
