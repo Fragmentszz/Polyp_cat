@@ -1,0 +1,21 @@
+dataset:
+  exp_dir: /applications/graduate_design/model/finetuned/cat_sam
+  data_dir: /remote-home/
+  num_workers: 4
+  dataset: polyp
+  shot_num: 16
+  train_bs: 1
+  val_bs: 1
+
+
+model:
+  sam_type: rein_vit_l
+  cat_type: cat-a
+  reins_config:
+    rein_type: Reins_Attention7
+    if_evp_feature: True
+    local_block: True
+    connect_hq_token: False
+    token_length: 128
+    zero_mlp_delta_f: False
+  ckpt_path: 
