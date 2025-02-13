@@ -35,13 +35,13 @@ def test_save(test_dataloader,model,device,save_path=None):
         batch_dice = []
         batch_gd = []
         batch_iou = []
-        name = 0
         for test_step, batch in enumerate(tqdm(test_dataloader)):
             batch = batch_to_cuda(batch, device)
             model.set_infer_img(img=batch['images'])
 
             masks_pred = model.infer(box_coords=batch['box_coords'])
             masks_gt = batch['gt_masks']
+            name = batch['index_name']
             
             for mask_pred, mask_gt in zip(masks_pred, masks_gt):
                 mask_pred = mask_pred.cpu().numpy()
@@ -81,7 +81,6 @@ def test_save(test_dataloader,model,device,save_path=None):
                     diff = get_dif(gt,res)
                     
                     diff.save(os.path.join(save_path, str(name)+".png"))
-                    name += 1
         return sum(batch_dice) / len(batch_dice),sum(batch_gd) / len(batch_gd),sum(batch_iou) / len(batch_iou)
 
 def batch_to_cuda(batch, device):

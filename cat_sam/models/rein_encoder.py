@@ -342,7 +342,7 @@ class MyCATSAMAImageEncoder4(CATSAMAImageEncoder):
             self.if_local_block = reins_cfg['local_block'] == 'True'
         else:
             self.if_local_block = reins_cfg['local_block']
-        
+        # modified 0.25 -> 0.1
         self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                         embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)
         self.EVP_f = nn.Linear(self.EVP2.patch_embed.num_patches,reins_cfg['token_length'])

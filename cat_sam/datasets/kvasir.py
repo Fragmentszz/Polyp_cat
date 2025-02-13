@@ -59,7 +59,8 @@ class KvasirDataset(BinaryCATSAMDataset):
             area_threshold=20, relative_threshold=True,
             **super_args
         )
-
+from cat_sam.datasets.misc import generate_prompts_from_mask
+import random
 class KvasirDataset_test(BinaryCATSAMDataset):
 
     def __init__(
@@ -86,6 +87,7 @@ class KvasirDataset_test(BinaryCATSAMDataset):
         json_config = {}
         images_path = join(data_dir, 'images')
         masks_path = join(data_dir, 'gts')
+        self.pic_name = []
         import os
         for image_name in os.listdir(images_path):
             sample_name = '.'.join(image_name.split('.')[:-1])
@@ -95,6 +97,7 @@ class KvasirDataset_test(BinaryCATSAMDataset):
             json_config[sample_name] = dict(
                 image_path=image_file_path, mask_path=mask_file_path
             )
+            self.pic_name.append(sample_name)
 
         
         super(KvasirDataset_test, self).__init__(
@@ -103,3 +106,11 @@ class KvasirDataset_test(BinaryCATSAMDataset):
             area_threshold=20, relative_threshold=True,
             **super_args
         )
+
+    def __getitem__(self, index):
+        index_name = self.idx_list[index]
+        ret_dict = super(KvasirDataset_test, self).__getitem__(index)
+        
+
+        ret_dict['index_name'] = index_name
+        return ret_dict
