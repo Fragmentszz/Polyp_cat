@@ -521,6 +521,7 @@ class Reins_Attention6(nn.Module):
             cls_token, x = torch.tensor_split(x, [1], dim=0)
 
         tokens = self.get_tokens(layer)
+
         delta_feat = self.forward_delta_feat(
             x,
             tokens,
