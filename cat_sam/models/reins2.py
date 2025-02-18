@@ -1,4 +1,5 @@
 
+import token
 from sympy import N
 from torch import nn, Tensor
 import torch
@@ -418,6 +419,7 @@ class Reins_Attention6(nn.Module):
         self.freq_nums = 0.25
         self.scale_init = scale_init
         self.c_hq_num = c_hq_num
+        self.r = round(self.token_dim*self.embed_dims_ratio)
         self.create_model()
 
 
@@ -439,11 +441,14 @@ class Reins_Attention6(nn.Module):
             self.B = nn.Parameter(torch.empty([self.num_layers + 1,round(self.token_dim*self.embed_dims_ratio)-self.c_hq_num,self.token_dim]))
         else:
             self.B = nn.Parameter(torch.empty([self.num_layers + 1,round(self.token_dim*self.embed_dims_ratio),self.token_dim]))
+            self.test_token = nn.Parameter(torch.empty([self.num_layers + 1,1,self.token_dim]))
+            nn.init.kaiming_normal_(self.test_token, a=math.sqrt(5))
         
         self.apply(self._init_weights)
         self.scale = nn.Parameter(torch.tensor(self.scale_init))
         nn.init.kaiming_uniform_(self.A, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.B, a=math.sqrt(5))
+        
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             nn.init.kaiming_uniform_(m.weight, a=math.sqrt(5))
@@ -492,19 +497,19 @@ class Reins_Attention6(nn.Module):
 
         
     def get_tokens(self, layer: int) -> Tensor:
-        if layer == -1:
-            B = self.B
-            B = self.f(B)
-            tokens = self.A @ B
-            return tokens
-        else:
+        if self.connect_with_hq_token:
             B = self.B[layer]
-            if self.connect_with_hq_token:
-                B = torch.concat([self.hq_token]*self.c_hq_num+[B],dim=0)
+            B = torch.concat([self.hq_token]*self.c_hq_num+[B],dim=0)
             B = self.f(B)
             tokens = self.A[0] @ B
-
-            return tokens
+        else:
+            if layer == self.num_layers:
+                B = torch.concat([self.hq_token]*self.r,dim=0)
+            else:
+                B = self.B[layer]
+            B = self.f(B)
+            tokens = self.A[0] @ B
+        return tokens
 
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True,evp_feature=None) -> torch.Tensor:
@@ -542,16 +547,19 @@ class Reins_Attention7(Reins_Attention6):
         print("????",self.embed_dims_ratio)
 
     def get_tokens(self, layer: int) -> Tensor:
-        if layer == -1:
-            raise TypeError
-            return None
-        else:
+        if self.connect_with_hq_token:
             B = self.B[layer]
-            if self.connect_with_hq_token:
-                B = torch.concat([self.hq_token]*self.c_hq_num+[B],dim=0)
-            # B = self.f(B)
-            tokens = self.A[0] @ B
-            return self.f(tokens)
+            B = torch.concat([self.hq_token]*self.c_hq_num+[B],dim=0)
+            tokens = self.f(self.A[0] @ B)
+        else:
+            if layer == self.num_layers:
+                B = torch.concat([self.test_token[layer]]*self.r,dim=0)
+            else:
+                # B = self.B[layer]
+                B = torch.concat([self.test_token[layer]]*self.r,dim=0)
+
+            tokens = self.f(self.A[0] @ B)
+        return tokens
 
 class Reins_Attention8(Reins_Attention6):
     def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,hq_token: torch.Tensor = None, 
@@ -588,3 +596,97 @@ class Reins_Attention8(Reins_Attention6):
                 B = torch.concat([self.linear_hq_token(self.hq_token)]*self.c_hq_num+[B],dim=0)
             tokens = self.A[0] @ B
             return tokens
+
+class Local_Enforcement(nn.Module):
+    def __init__(self, embed_dims: int,  num_layers: int,embed_dims_ratio=0.125,hq_token: torch.Tensor = None) -> None:
+        super().__init__()
+        self.embed_dims = embed_dims
+        self.embed_dims_ratio = embed_dims_ratio
+        self.num_layers = num_layers
+        self.hq_token = hq_token
+        
+        self.create_model()
+
+
+    def create_model(self):
+        
+        for i in range(self.num_layers):
+            setattr(self, f"down_proj_{i}", nn.Linear(
+                in_features=self.embed_dims,
+                out_features=int(self.embed_dims*self.embed_dims_ratio)
+            ))
+            
+        self.gelu = nn.GELU()
+        self.up_proj = nn.Linear(
+            in_features=int(self.embed_dims*self.embed_dims_ratio),
+            out_features=int(self.embed_dims)
+        )
+        self.scale = nn.Parameter(torch.tensor(0.1))
+        
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            nn.init.kaiming_uniform_(m.weight, a=math.sqrt(5))
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_() 
+        elif isinstance(m, nn.Parameter):
+            nn.init.kaiming_uniform_(m, a=math.sqrt(5))
+
+
+
+    def forward_delta_feat(self, feats: Tensor, layers: int) -> Tensor:
+        return None
+    
+    # def f(self,B):
+    #     return self.up_proj(self.gelu(self.down_proj(B)))
+
+        
+    def get_tokens(self, layer: int) -> Tensor:
+        if self.connect_with_hq_token:
+            B = self.B[layer]
+            B = torch.concat([self.hq_token]*self.c_hq_num+[B],dim=0)
+            B = self.f(B)
+            tokens = self.A[0] @ B
+        else:
+            if layer == self.num_layers:
+                B = torch.concat([self.hq_token]*self.r,dim=0)
+            else:
+                B = self.B[layer]
+            B = self.f(B)
+            tokens = self.A[0] @ B
+        return tokens
+
+    
+    def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True) -> torch.Tensor:
+        assert layer >= 0 or layer < self.num_layers , "layer should be in range of 0 to num_layers"
+        if batch_first:
+            # H*W,B,C
+            x = x.permute(1, 0, 2)
+        if has_cls_token:
+            cls_token, x = torch.tensor_split(x, [1], dim=0)
+
+        # tokens = self.get_tokens(layer)
+        token = self.hq_token
+        # delta_feat = self.forward_delta_feat(
+        #     x,
+        #     layer
+        # )
+        down_proj = getattr(self, f"down_proj_{layer}")
+        delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
+        delta_feat = delta_feat * self.scale
+        # x = x + delta_feat
+        if has_cls_token:
+            x = torch.cat([cls_token, x], dim=0)
+        if batch_first:
+            x = x.permute(1, 0, 2)
+        return x

@@ -11,14 +11,13 @@ if __name__ == '__main__':
     # model_configs = ['cat-sam/cat_sam/config/model/6_1.yaml','cat-sam/cat_sam/config/model/6_3.yaml',
     #                  'cat-sam/cat_sam/config/model/6_7.yaml','cat-sam/cat_sam/config/model/7_3.yaml',
     #                  'cat-sam/cat_sam/config/model/8_2.yaml']
-    model_configs = [
-                     'cat-sam/cat_sam/config/model/7_3.yaml', 'cat-sam/cat_sam/config/model/7_5.yaml', 'cat-sam/cat_sam/config/model/7_6.yaml']
+    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/7_7___16.yaml','/applications/graduate_design/cat-sam/cat_sam/config/model/7_7___24.yaml','/applications/graduate_design/cat-sam/cat_sam/config/model/7_7___32.yaml']
     eval_dataset_config = '/applications/graduate_design/cat-sam/cat_sam/config/eval_dataset.yaml'
     test_datasets = ['CVC-300', 'CVC-ClinicDB', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'Kvasir']
     dataset_config = load_config(eval_dataset_config)
     dataloaders = build_dataloader_eval(dataset_config)
-    root = '/remote-home/results'
-    print(dataloaders)
+    root = '/root/autodl-fs/results/'
+    # print(dataloaders)
     for model_config in model_configs:
         model_name = model_config.split('/')[-1].split('.')[0]
         config = load_config(model_config)
