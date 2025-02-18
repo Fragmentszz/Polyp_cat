@@ -1,5 +1,5 @@
 
-from utils import test_save
+from utils import test_save,test_token
 from cat_sam.config import load_config
 from cat_sam.build_model import build_model,build_dataloader_eval
 import torch
@@ -49,6 +49,19 @@ if __name__ == '__main__':
         logging.info(
              f'=====Start Eval: model:{model_name}  dataset:{eval_dataset_config}  save_root:{save_root}'
         )
+        # for dl,dataset in zip(dataloaders,test_datasets):
+        #     print(f'Testing on {dataset} dataset...')
+        #     logging.info(f'Testing on {dataset} dataset...')
+        #     save_path = f'{save_root}/{dataset}'
+            
+        #     if not os.path.exists(save_path):
+        #         os.makedirs(save_path)
+
+        #     print(dl)
+        #     dice,gd,iou = test_save(dl,model,device,save_path=save_path)
+        #     logging.info(f'Mean val dice: {dice}')
+        #     logging.info(f'Mean val gd: {gd}')
+        #     logging.info(f'Mean val iou: {iou}')
         for dl,dataset in zip(dataloaders,test_datasets):
             print(f'Testing on {dataset} dataset...')
             logging.info(f'Testing on {dataset} dataset...')
@@ -58,7 +71,8 @@ if __name__ == '__main__':
                 os.makedirs(save_path)
 
             print(dl)
-            dice,gd,iou = test_save(dl,model,device,save_path=save_path)
-            logging.info(f'Mean val dice: {dice}')
-            logging.info(f'Mean val gd: {gd}')
-            logging.info(f'Mean val iou: {iou}')
+            test_token(dl,model,device,save_path=save_path)
+            # dice,gd,iou = test_token(dl,model,device,save_path=save_path)
+            # logging.info(f'Mean val dice: {dice}')
+            # logging.info(f'Mean val gd: {gd}')
+            # logging.info(f'Mean val iou: {iou}')

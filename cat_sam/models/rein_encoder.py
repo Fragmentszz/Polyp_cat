@@ -460,8 +460,10 @@ class MyCATSAMAImageEncoder5(CATSAMAImageEncoder):
         self.hq_token = hq_token
         
         print("==============look:",'connect_hq_token' in reins_cfg)
+        # required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f',
+        #                  'connect_hq_token','c_hq_num']
         required_keys = ['embed_dims','num_layers','patch_size','token_length','embed_dims_ratio','hq_token','scale_init','zero_mlp_delta_f',
-                         'connect_hq_token','c_hq_num']
+                         'c_hq_num']
         self.rein_cfg = {}
 
         for key in required_keys:
@@ -469,7 +471,7 @@ class MyCATSAMAImageEncoder5(CATSAMAImageEncoder):
                 self.rein_cfg[key] = reins_cfg[key]
         print(self.rein_cfg.keys())
         self.reins = rein_cls(**self.rein_cfg) if self.rein_cfg is not None else None
-        self.local_enforcement = Local_Enforcement(self.rein_cfg['embed_dims'],len(self.rein_unenabled_layers),0.25,hq_token) if self.if_local_block else None
+        self.local_enforcement = Local_Enforcement(self.rein_cfg['embed_dims'],len(self.rein_unenabled_layers),0.25,hq_token,reins_cfg['connect_hq_token']) if self.if_local_block else None
 
         
     def get_hq_token(self):

@@ -19,6 +19,40 @@ def get_dif(gt,res):
     
     return diff
 
+
+
+def get_res(gt,res,img):
+    img = img.detach()
+    img = img.permute(1,2,0).cpu().numpy()
+    img = np.array(img,dtype=np.uint8)
+    # print(res.shape,img.shape)
+    res_1_gt_0 = np.logical_and(res, np.logical_not(gt))
+    res_0_gt_1 = np.logical_and(np.logical_not(res), gt)
+    res_1_gt_1 = np.logical_and(res, gt)
+    # print((gt.shape[0], gt.shape[1], 3))
+    diff = img
+    # diff = np.zeros((gt.shape[0], gt.shape[1], 3), dtype=np.uint8)
+    # diff[res_1_gt_0] = [0, 255, 0]
+    # # diff[res_0_gt_1] = [255, 0, 0]
+    # print(res==255)
+    diff[res==255] = [0,255,0]
+    diff[gt==255] = [255,0,0]
+    
+    diff[res_1_gt_1==255] = [255, 255, 255]
+    # diff[res==0] = [255,0,0]
+    
+    # diff[res_1_gt_1] = [255, 255, 255]
+    # # print(res_0_gt_1.sum())
+    # # print(res_1_gt_0.sum())
+    # # print(diff)
+    diff = Image.fromarray(diff)
+    
+
+    
+    return diff
+
+
+
 import torch.nn.functional as F
 from monai.metrics import DiceMetric, MeanIoU, SurfaceDiceMetric, SSIMMetric, GeneralizedDiceScore
 import argparse
@@ -27,7 +61,7 @@ from os.path import join
 import torch
 from train import batch_to_cuda
 from tqdm import tqdm
-def test_save(test_dataloader,model,device,save_path=None):
+def test_save(test_dataloader,model,device,save_path=None,save_func=get_dif):
     if save_path is not None and not os.path.exists(save_path):
         os.mkdir(save_path)
     
@@ -37,13 +71,15 @@ def test_save(test_dataloader,model,device,save_path=None):
         batch_iou = []
         for test_step, batch in enumerate(tqdm(test_dataloader)):
             batch = batch_to_cuda(batch, device)
-            model.set_infer_img(img=batch['images'])
+            imgs = batch['images']
+            model.set_infer_img(img=imgs)
 
             masks_pred = model.infer(box_coords=batch['box_coords'])
             masks_gt = batch['gt_masks']
-            name = batch['index_name']
+            names = batch['index_name']
             
-            for mask_pred, mask_gt in zip(masks_pred, masks_gt):
+            
+            for mask_pred, mask_gt,name,img in zip(masks_pred, masks_gt,names,imgs):
                 mask_pred = mask_pred.cpu().numpy()
                 mask_gt = mask_gt.cpu().numpy()
                 gt = mask_gt
@@ -78,7 +114,10 @@ def test_save(test_dataloader,model,device,save_path=None):
                     res = np.round(res * 255).astype(np.uint8)
                     gt = gt.squeeze().cpu().numpy()
                     gt = np.round(gt * 255).astype(np.uint8)
-                    diff = get_dif(gt,res)
+                    if save_func == get_res:
+                        diff = save_func(gt,res,img)
+                    else:
+                        diff = save_func(gt,res)
                     
                     diff.save(os.path.join(save_path, str(name)+".png"))
         return sum(batch_dice) / len(batch_dice),sum(batch_gd) / len(batch_gd),sum(batch_iou) / len(batch_iou)
@@ -94,6 +133,41 @@ def batch_to_cuda(batch, device):
                 item.to(device=device, dtype=torch.long) if item is not None else None for item in batch[key]
             ]
     return batch
+
+
+def test_token(test_dataloader,model,device,save_path=None,save_func=get_res):
+    
+    A_ori = model.image_encoder.reins.A.detach().clone()
+   
+    m = A_ori.shape[1]
+    dim = A_ori.shape[2]
+    pre = None
+    print(m,dim)
+    for test_token_id in range(m):
+        print(test_token_id)
+        cp = A_ori[0,test_token_id].clone()
+        zeros = torch.zeros_like(A_ori)
+        zeros[0,test_token_id] = cp
+        model.image_encoder.reins.A = torch.nn.Parameter(zeros)
+        B_ori = model.image_encoder.reins.B[0].detach().clone()
+        # print(model.image_encoder.reins.A)
+        tmp = model.image_encoder.reins.A[0] @ B_ori
+        if pre is not None:
+            print(torch.abs(tmp-pre).sum())
+            assert not torch.allclose(tmp,pre),"不太对劲"
+            
+        pre = tmp
+        non_zero_rows = torch.nonzero(tmp.sum(dim=1))
+        print(test_token_id,non_zero_rows)
+        assert test_token_id == non_zero_rows, "不太对劲"
+        
+        if save_path is not None:
+            now_save_path = os.path.join(save_path,str(test_token_id))
+        else:
+            now_save_path = None
+        test_save(test_dataloader,model,device,now_save_path,save_func)
+            
+
 if __name__ == '__main__':
     gt = np.zeros((512,512))
     res = np.zeros((512,512))

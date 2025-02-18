@@ -421,7 +421,7 @@ class Reins_Attention6(nn.Module):
         self.c_hq_num = c_hq_num
         self.r = round(self.token_dim*self.embed_dims_ratio)
         self.create_model()
-
+        
 
     def create_model(self):
         self.down_proj = nn.Linear(
@@ -538,7 +538,7 @@ class Reins_Attention6(nn.Module):
 
 class Reins_Attention7(Reins_Attention6):
     def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio=0.125,use_softmax: bool = True,hq_token: torch.Tensor = None, 
-                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False,connect_hq_token=True,c_hq_num:int=1) -> None:
+                 scale_init: float = 0.001, zero_mlp_delta_f: bool = False,connect_hq_token=True,c_hq_num:int=0) -> None:
         print("????",embed_dims_ratio)
         super().__init__(
             embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f,connect_with_hq_token=connect_hq_token
@@ -598,12 +598,13 @@ class Reins_Attention8(Reins_Attention6):
             return tokens
 
 class Local_Enforcement(nn.Module):
-    def __init__(self, embed_dims: int,  num_layers: int,embed_dims_ratio=0.125,hq_token: torch.Tensor = None) -> None:
+    def __init__(self, embed_dims: int,  num_layers: int,embed_dims_ratio=0.125,hq_token: torch.Tensor = None,connect_hq_token=True) -> None:
         super().__init__()
         self.embed_dims = embed_dims
         self.embed_dims_ratio = embed_dims_ratio
         self.num_layers = num_layers
         self.hq_token = hq_token
+        self.connect_hq_token = connect_hq_token
         
         self.create_model()
 
@@ -678,7 +679,10 @@ class Local_Enforcement(nn.Module):
         # tokens = self.get_tokens(layer)
         token = self.hq_token
         down_proj = getattr(self, f"down_proj_{layer}")
-        delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
+        if self.connect_hq_token:
+            delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
+        else:
+            delta_feat = self.up_proj(self.gelu((down_proj(x))))
         x = delta_feat * self.scale + x
         
         # x = x + delta_feat

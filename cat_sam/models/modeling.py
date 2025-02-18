@@ -475,7 +475,7 @@ class CATSAMA(BaseCATSAM):
             self.image_encoder = MyCATSAMAImageEncoder5(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight,reins_cfg=rein_cfg)
         else:
             self.image_encoder = CATSAMAImageEncoder(ori_sam=self.ori_sam, hq_token=self.mask_decoder.hf_token.weight)
-
+    
 class Reins(BaseCATSAM):
     def __init__(self, model_type: str,rein_cfg=None):
         super(Reins, self).__init__(model_type=model_type)
