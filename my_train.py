@@ -127,9 +127,9 @@ def main_worker(worker_id, worker_args):
     model.train()
 
 
-
+    print([n for n,p in model.named_parameters() if p.requires_grad])
     optimizer = torch.optim.AdamW(
-        params=[p for p in model.parameters() if p.requires_grad], lr=5e-4, weight_decay=1e-4
+        params=[p for n,p in model.named_parameters() if p.requires_grad], lr=5e-4, weight_decay=1e-4
     )
     max_epoch_num, valid_per_epochs = 20, 2
 

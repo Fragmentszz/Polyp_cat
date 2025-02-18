@@ -49,8 +49,10 @@ class BaseCATSAM(nn.Module):
             for n, c in self.named_children():
                 if n != 'image_encoder':
                     c.eval()
+                    print(c,":eval")
                 else:
                     c.train()
+                    print(c,":train")
         else:
             # eval:
             for module in self.children():

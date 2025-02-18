@@ -77,27 +77,27 @@ class CATSAMAImageEncoder(SAMImageEncodeWrapper):
     ):
         super(CATSAMAImageEncoder, self).__init__(ori_sam=ori_sam, fix=True)
 
-        self.prompt_generator = PromptGenerator(
-            scale_factor=32, prompt_type='highpass',
-            embed_dim=self.sam_img_encoder.patch_embed.proj.out_channels,
-            tuning_stage=1234, depth=len(self.sam_img_encoder.blocks), input_type='fft', freq_nums=0.25,
-            handcrafted_tune=True, embedding_tune=True, adaptor='adaptor',
-            img_size=self.sam_img_encoder.img_size,
-            patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0]
-        )
+        # self.prompt_generator = PromptGenerator(
+        #     scale_factor=32, prompt_type='highpass',
+        #     embed_dim=self.sam_img_encoder.patch_embed.proj.out_channels,
+        #     tuning_stage=1234, depth=len(self.sam_img_encoder.blocks), input_type='fft', freq_nums=0.25,
+        #     handcrafted_tune=True, embedding_tune=True, adaptor='adaptor',
+        #     img_size=self.sam_img_encoder.img_size,
+        #     patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0]
+        # )
 
         self.hq_token = hq_token
-        self.hq_token_down_proj = nn.Sequential(
-            *[Adapter(in_features=hq_token.size(-1), mlp_ratio=0.125, add_last_layer=False)
-              for _ in range(self.prompt_generator.shared_mlp.in_features)]
-        )
+        # self.hq_token_down_proj = nn.Sequential(
+        #     *[Adapter(in_features=hq_token.size(-1), mlp_ratio=0.125, add_last_layer=False)
+        #       for _ in range(self.prompt_generator.shared_mlp.in_features)]
+        # )
 
         patch_height = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[0]
         patch_width = self.sam_img_encoder.img_size / self.sam_img_encoder.patch_embed.proj.kernel_size[1]
-        self.shared_up_proj = nn.Linear(
-            in_features=int(hq_token.size(-1) * 0.125),
-            out_features=int(patch_height * patch_width)
-        )
+        # self.shared_up_proj = nn.Linear(
+        #     in_features=int(hq_token.size(-1) * 0.125),
+        #     out_features=int(patch_height * patch_width)
+        # )
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

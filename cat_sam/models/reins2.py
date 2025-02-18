@@ -621,7 +621,7 @@ class Local_Enforcement(nn.Module):
             in_features=int(self.embed_dims*self.embed_dims_ratio),
             out_features=int(self.embed_dims)
         )
-        self.scale = nn.Parameter(torch.tensor(0.1))
+        self.scale = nn.Parameter(torch.tensor(0.1),requires_grad=True)
         
         self.apply(self._init_weights)
 
@@ -677,13 +677,10 @@ class Local_Enforcement(nn.Module):
 
         # tokens = self.get_tokens(layer)
         token = self.hq_token
-        # delta_feat = self.forward_delta_feat(
-        #     x,
-        #     layer
-        # )
         down_proj = getattr(self, f"down_proj_{layer}")
         delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
-        delta_feat = delta_feat * self.scale
+        x = delta_feat * self.scale + x
+        
         # x = x + delta_feat
         if has_cls_token:
             x = torch.cat([cls_token, x], dim=0)
