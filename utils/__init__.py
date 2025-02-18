@@ -145,6 +145,7 @@ def test_token(test_dataloader,model,device,save_path=None,save_func=get_res):
     print(m,dim)
     for test_token_id in range(m):
         print(test_token_id)
+        
         cp = A_ori[0,test_token_id].clone()
         zeros = torch.zeros_like(A_ori)
         zeros[0,test_token_id] = cp
@@ -157,7 +158,7 @@ def test_token(test_dataloader,model,device,save_path=None,save_func=get_res):
             assert not torch.allclose(tmp,pre),"不太对劲"
             
         pre = tmp
-        non_zero_rows = torch.nonzero(tmp.sum(dim=1))
+        non_zero_rows = torch.nonzero(tmp.sum(dim=1) / 128 /256)
         print(test_token_id,non_zero_rows)
         assert test_token_id == non_zero_rows, "不太对劲"
         
