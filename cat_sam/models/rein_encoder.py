@@ -515,13 +515,13 @@ class MyCATSAMAImageEncoder5(CATSAMAImageEncoder):
                 #         has_cls_token=False,
                 #         evp_feature=evp_feature
                 #     ).view(B, H, W, C)
-                elif self.if_local_block:
-                    x = self.local_enforcement.forward(
-                        x.view(B, -1, C),
-                        layer=self.rein_unenabled_layers.index(i),
-                        batch_first=True,
-                        has_cls_token=False
-                    ).view(B, H, W, C)
+                # elif self.if_local_block:
+                #     x = self.local_enforcement.forward(
+                #         x.view(B, -1, C),
+                #         layer=self.rein_unenabled_layers.index(i),
+                #         batch_first=True,
+                #         has_cls_token=False
+                #     ).view(B, H, W, C)
 
             if blk.window_size == 0:
                 interm_embeddings.append(x)
