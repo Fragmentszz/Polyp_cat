@@ -446,12 +446,13 @@ class Reins_Attention6(nn.Module):
         
         self.apply(self._init_weights)
         self.scale = nn.Parameter(torch.tensor(self.scale_init))
-        nn.init.kaiming_uniform_(self.A, a=math.sqrt(5))
-        nn.init.kaiming_uniform_(self.B, a=math.sqrt(5))
+        nn.init.kaiming_normal_(self.A, a=math.sqrt(5))
+        nn.init.kaiming_normal_(self.B, a=math.sqrt(5))
+        
         
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
-            nn.init.kaiming_uniform_(m.weight, a=math.sqrt(5))
+            nn.init.kaiming_normal_(m.weight, a=math.sqrt(5))
             if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.LayerNorm):
@@ -464,7 +465,7 @@ class Reins_Attention6(nn.Module):
             if m.bias is not None:
                 m.bias.data.zero_() 
         elif isinstance(m, nn.Parameter):
-            nn.init.kaiming_uniform_(m, a=math.sqrt(5))
+            nn.init.kaiming_normal_(m, a=math.sqrt(5))
 
 
     def get_mlps(self, layer: int) -> Tensor:
@@ -479,8 +480,9 @@ class Reins_Attention6(nn.Module):
             # b, m, c -> b, c, m
             token_with_evp = (evp_feature + tokens).permute(0,2,1)
             attn = torch.bmm(feats.permute(1,0,2), token_with_evp).permute(1,0,2)
-            
+            # b = 0
             # attn = (feats[b] @ (evp_feature[b]+tokens).permute(1,0)).unsqueeze(0).permute(1,0,2)
+            
         else:
             attn = torch.einsum("nbc,mc->nbm", feats, tokens)
         mlp_token2feat, mlp_delta_f = self.get_mlps(layers)
@@ -671,6 +673,8 @@ class Local_Enforcement(nn.Module):
     #         tokens = self.A[0] @ B
     #     return tokens
 
+    # def get_delta_feat(self,layer:int,batch_first=False, has_cls_token=True) -> torch.Tensor:
+        
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True) -> torch.Tensor:
         assert layer >= 0 or layer < self.num_layers , "layer should be in range of 0 to num_layers"

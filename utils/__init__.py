@@ -119,7 +119,7 @@ def test_save(test_dataloader,model,device,save_path=None,save_func=get_dif):
                     else:
                         diff = save_func(gt,res)
                     
-                    diff.save(os.path.join(save_path, str(name)+".png"))
+                    diff.save(os.path.join(save_path, str(name)+f"_{final_dice}_{final_gd}_{final_iou}.png"))
         return sum(batch_dice) / len(batch_dice),sum(batch_gd) / len(batch_gd),sum(batch_iou) / len(batch_iou)
 
 def batch_to_cuda(batch, device):
@@ -142,7 +142,8 @@ def test_token(test_dataloader,model,device,save_path=None,save_func=get_res):
     m = A_ori.shape[1]
     dim = A_ori.shape[2]
     pre = None
-    print(m,dim)
+    print(A_ori[0,0] - A_ori[0,1])
+    print(torch.abs(A_ori[0,0] - A_ori[0,1]).sum())
     for test_token_id in range(m):
         print(test_token_id)
         
@@ -156,18 +157,17 @@ def test_token(test_dataloader,model,device,save_path=None,save_func=get_res):
         if pre is not None:
             print(torch.abs(tmp-pre).sum())
             assert not torch.allclose(tmp,pre),"不太对劲"
-            
         pre = tmp
-        non_zero_rows = torch.nonzero(tmp.sum(dim=1) / 128 /256)
-        print(test_token_id,non_zero_rows)
+        non_zero_rows = torch.nonzero(tmp.sum(dim=1))
         assert test_token_id == non_zero_rows, "不太对劲"
         
         if save_path is not None:
             now_save_path = os.path.join(save_path,str(test_token_id))
         else:
             now_save_path = None
-        test_save(test_dataloader,model,device,now_save_path,save_func)
-            
+        dice,gd,iou = test_save(test_dataloader,model,device,now_save_path,save_func)
+        print(f"{test_token}: {dice},{gd},{iou}")
+    model.image_encoder.reins.A = torch.nn.Parameter(A_ori)
 
 if __name__ == '__main__':
     gt = np.zeros((512,512))

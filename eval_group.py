@@ -11,7 +11,7 @@ if __name__ == '__main__':
     # model_configs = ['cat-sam/cat_sam/config/model/6_1.yaml','cat-sam/cat_sam/config/model/6_3.yaml',
     #                  'cat-sam/cat_sam/config/model/6_7.yaml','cat-sam/cat_sam/config/model/7_3.yaml',
     #                  'cat-sam/cat_sam/config/model/8_2.yaml']
-    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/1_7_7_0.yaml']
+    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/2_7_7_0.yaml']
     eval_dataset_config = '/applications/graduate_design/cat-sam/cat_sam/config/eval_dataset.yaml'
     test_datasets = ['CVC-300', 'CVC-ClinicDB', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'Kvasir']
     dataset_config = load_config(eval_dataset_config)
@@ -46,9 +46,9 @@ if __name__ == '__main__':
         # 设置日志级别
         logger.setLevel(logging.INFO)
 
-        logging.info(
-             f'=====Start Eval: model:{model_name}  dataset:{eval_dataset_config}  save_root:{save_root}'
-        )
+        # logging.info(
+        #      f'=====Start Eval: model:{model_name}  dataset:{eval_dataset_config}  save_root:{save_root}'
+        # )
         # for dl,dataset in zip(dataloaders,test_datasets):
         #     print(f'Testing on {dataset} dataset...')
         #     logging.info(f'Testing on {dataset} dataset...')
