@@ -604,7 +604,7 @@ class Local_Enforcement(nn.Module):
         self.embed_dims = embed_dims
         self.embed_dims_ratio = embed_dims_ratio
         self.num_layers = num_layers
-        self.hq_token = hq_token
+        # self.hq_token = hq_token
         self.connect_hq_token = connect_hq_token
         
         self.create_model()
@@ -624,7 +624,7 @@ class Local_Enforcement(nn.Module):
             out_features=int(self.embed_dims)
         )
         self.scale = nn.Parameter(torch.tensor(0.1),requires_grad=True)
-        
+        self.token = nn.Parameter(torch.zeros((1,int(self.embed_dims*self.embed_dims_ratio))),requires_grad=True)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -653,20 +653,20 @@ class Local_Enforcement(nn.Module):
     #     return self.up_proj(self.gelu(self.down_proj(B)))
 
         
-    def get_tokens(self, layer: int) -> Tensor:
-        if self.connect_with_hq_token:
-            B = self.B[layer]
-            B = torch.concat([self.hq_token]*self.c_hq_num+[B],dim=0)
-            B = self.f(B)
-            tokens = self.A[0] @ B
-        else:
-            if layer == self.num_layers:
-                B = torch.concat([self.hq_token]*self.r,dim=0)
-            else:
-                B = self.B[layer]
-            B = self.f(B)
-            tokens = self.A[0] @ B
-        return tokens
+    # def get_tokens(self, layer: int) -> Tensor:
+    #     if self.connect_with_hq_token:
+    #         B = self.B[layer]
+    #         B = torch.concat([self.hq_token]*self.c_hq_num+[B],dim=0)
+    #         B = self.f(B)
+    #         tokens = self.A[0] @ B
+    #     else:
+    #         if layer == self.num_layers:
+    #             B = torch.concat([self.hq_token]*self.r,dim=0)
+    #         else:
+    #             B = self.B[layer]
+    #         B = self.f(B)
+    #         tokens = self.A[0] @ B
+    #     return tokens
 
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True) -> torch.Tensor:
@@ -678,12 +678,13 @@ class Local_Enforcement(nn.Module):
             cls_token, x = torch.tensor_split(x, [1], dim=0)
 
         # tokens = self.get_tokens(layer)
-        token = self.hq_token
+        token = self.token
         down_proj = getattr(self, f"down_proj_{layer}")
-        if self.connect_hq_token:
-            delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
-        else:
-            delta_feat = self.up_proj(self.gelu((down_proj(x))))
+        # if self.connect_hq_token:
+        #     delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
+        # else:
+        #     delta_feat = self.up_proj(self.gelu((down_proj(x))))
+        delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
         x = delta_feat * self.scale + x
         
         # x = x + delta_feat
