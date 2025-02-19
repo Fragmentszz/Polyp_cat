@@ -1,7 +1,7 @@
 dataset:
-  data_dir: /root/autodl-fs/
+  data_dir: /remote-home/
   num_workers: 4
   dataset: polyp
   shot_num: 16
   train_bs: 1
-  val_bs: 1
+  val_bs: 4

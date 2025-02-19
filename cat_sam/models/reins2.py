@@ -480,7 +480,6 @@ class Reins_Attention6(nn.Module):
             token_with_evp = (evp_feature + tokens).permute(0,2,1)
             attn = torch.bmm(feats.permute(1,0,2), token_with_evp).permute(1,0,2)
             
-            # attn = (feats[b] @ (evp_feature[b]+tokens).permute(1,0)).unsqueeze(0).permute(1,0,2)
         else:
             attn = torch.einsum("nbc,mc->nbm", feats, tokens)
         mlp_token2feat, mlp_delta_f = self.get_mlps(layers)
