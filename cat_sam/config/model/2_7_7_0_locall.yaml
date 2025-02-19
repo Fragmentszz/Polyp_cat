@@ -16,7 +16,7 @@ model:
     if_evp_feature: True
     local_block: True
     connect_hq_token: True
-    token_length: 2
+    token_length: 1
     zero_mlp_delta_f: False
     c_hq_num: 0
     embed_dims_ratio: 0.125
