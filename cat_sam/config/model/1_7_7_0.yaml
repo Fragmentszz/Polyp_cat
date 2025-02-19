@@ -21,4 +21,4 @@ model:
     c_hq_num: 0
     embed_dims_ratio: 0.125
   # ckpt_path: /applications/graduate_design/model/finetuned/cat_sam/7_7_0_new/best_model.pth
-  ckpt_path: 
+  ckpt_path: /applications/graduate_design/model/finetuned/cat_sam/1_7_7_0/best_model.pth
