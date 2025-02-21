@@ -61,7 +61,14 @@ from os.path import join
 import torch
 from train import batch_to_cuda
 from tqdm import tqdm
+from PIL import Image
+from matplotlib import pyplot as plt
+import seaborn as sns
+import random
+from monai.utils import MetricReduction
 def test_save(test_dataloader,model,device,save_path=None,save_func=get_dif):
+    model.eval()
+    atten_list = []
     if save_path is not None and not os.path.exists(save_path):
         os.mkdir(save_path)
     
@@ -78,7 +85,8 @@ def test_save(test_dataloader,model,device,save_path=None,save_func=get_dif):
             masks_gt = batch['gt_masks']
             names = batch['index_name']
             
-            
+            random_choose = random.sample(range(4096),10)
+            lies = []
             for mask_pred, mask_gt,name,img in zip(masks_pred, masks_gt,names,imgs):
                 mask_pred = mask_pred.cpu().numpy()
                 mask_gt = mask_gt.cpu().numpy()
@@ -88,7 +96,7 @@ def test_save(test_dataloader,model,device,save_path=None,save_func=get_dif):
                 gt /= (gt.max() + 1e-8)
                 
                 dice = DiceMetric()
-                gd =  GeneralizedDiceScore()
+                gd =  GeneralizedDiceScore(reduction="mean")
                 iou = MeanIoU()
                 
                 res = torch.tensor(mask_pred)
@@ -115,11 +123,39 @@ def test_save(test_dataloader,model,device,save_path=None,save_func=get_dif):
                     gt = gt.squeeze().cpu().numpy()
                     gt = np.round(gt * 255).astype(np.uint8)
                     if save_func == get_res:
+                        
                         diff = save_func(gt,res,img)
+                        
+                        
+                        
+                        
                     else:
                         diff = save_func(gt,res)
                     
                     diff.save(os.path.join(save_path, str(name)+f"_{final_dice}_{final_gd}_{final_iou}.png"))
+                    attn = model.image_encoder.reins.get_attention().detach().cpu().numpy()
+                    
+                    attn = attn.squeeze()
+                    bigger_than_1 = attn > 0.1
+                    # 找到这些对应的列
+                    bigger_than_1 = bigger_than_1.sum(axis=0)
+                    lie = bigger_than_1.nonzero()
+                    lies.append(lie)
+                    
+                    
+                    # 随机挑选10行
+                    attn = attn[random_choose]
+                    
+                    attn = attn.squeeze()
+                    plt.figure(figsize=(20, 20))
+                    sns.heatmap(attn, annot=True, cmap='viridis', linewidths=0.5, linecolor='black')
+                    # plt.show()
+                    # save
+                    plt.savefig(os.path.join(save_path, str(name) + f"_{final_dice}_{final_gd}_{final_iou}_heatmap.png"))
+                    plt.close()    
+                    atten_list.append(attn)
+        # 
+        print(np.concatenate(lies))
         return sum(batch_dice) / len(batch_dice),sum(batch_gd) / len(batch_gd),sum(batch_iou) / len(batch_iou)
 
 def batch_to_cuda(batch, device):
@@ -142,17 +178,17 @@ def test_token(test_dataloader,model,device,save_path=None,save_func=get_res):
     m = A_ori.shape[1]
     dim = A_ori.shape[2]
     pre = None
-    print(A_ori[0,0] - A_ori[0,1])
-    print(torch.abs(A_ori[0,0] - A_ori[0,1]).sum())
     for test_token_id in range(m):
-        print(test_token_id)
+        if test_token_id == 106:
+            continue
+        # print(test_token_id)
         
         cp = A_ori[0,test_token_id].clone()
         zeros = torch.zeros_like(A_ori)
         zeros[0,test_token_id] = cp
         model.image_encoder.reins.A = torch.nn.Parameter(zeros)
         B_ori = model.image_encoder.reins.B[0].detach().clone()
-        # print(model.image_encoder.reins.A)
+        
         tmp = model.image_encoder.reins.A[0] @ B_ori
         if pre is not None:
             print(torch.abs(tmp-pre).sum())
@@ -160,7 +196,7 @@ def test_token(test_dataloader,model,device,save_path=None,save_func=get_res):
         pre = tmp
         non_zero_rows = torch.nonzero(tmp.sum(dim=1))
         assert test_token_id == non_zero_rows, "不太对劲"
-        
+        print(f"test_token_id: {test_token_id}")
         if save_path is not None:
             now_save_path = os.path.join(save_path,str(test_token_id))
         else:

@@ -478,7 +478,7 @@ class MyCATSAMAImageEncoder5(CATSAMAImageEncoder):
         return self.reins.get_hq_token()
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        inp = x
+        inp = x.clone()
         x = self.sam_img_encoder.patch_embed(x)
         if self.if_evp_feature:
             evp_feature = self.EVP2(inp)

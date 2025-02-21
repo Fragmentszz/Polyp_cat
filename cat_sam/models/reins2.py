@@ -52,13 +52,7 @@ class EVP(nn.Module):
 
     def forward(self,x):
         x = self.fft(x,self.freq_nums)
-        # import cv2    
-        # import numpy as np
-        
-        # tmp = x.detach().cpu().numpy()
-        # tmp = (tmp*255).astype(np.uint8)
-        
-        # cv2.imwrite("tmp.jpg",tmp[0].transpose(1,2,0))
+
         return self.patch_embed(x)
 
     def init_handcrafted(self, x):
@@ -193,8 +187,6 @@ class Reins_Attention4(nn.Module):
         concat = torch.cat([max_token, avg_token, last_token], dim=-1)
         concat = concat.flatten()
         hq_token = self.token2hq(concat).reshape(1,-1)
-        # print("hq_token")
-        # print(hq_token)
         return hq_token
 
     def get_mlps(self, layer: int) -> Tensor:
@@ -477,19 +469,31 @@ class Reins_Attention6(nn.Module):
     
     def forward_delta_feat(self, feats: Tensor, tokens: Tensor, layers: int,evp_feature=None) -> Tensor:
         if evp_feature is not None:
+            # n,b,c
+            # print(feats.shape)
             # b, m, c -> b, c, m
+            evp_feature = torch.zeros_like(evp_feature)
             token_with_evp = (evp_feature + tokens).permute(0,2,1)
             attn = torch.bmm(feats.permute(1,0,2), token_with_evp).permute(1,0,2)
+            
+            # feats = feats.permute(1,0,2)
             # b = 0
             # attn = (feats[b] @ (evp_feature[b]+tokens).permute(1,0)).unsqueeze(0).permute(1,0,2)
+            # feats = feats.permute(1,0,2)
             
         else:
             attn = torch.einsum("nbc,mc->nbm", feats, tokens)
+        
+        
+        
+        
+        
         mlp_token2feat, mlp_delta_f = self.get_mlps(layers)
 
         if self.use_softmax:
             attn = attn * (self.embed_dims**-0.5)
             attn = F.softmax(attn, dim=-1)
+        self.attn = attn.clone()
         delta_f = torch.einsum(
             "nbm,mc->nbc",
             attn,
@@ -500,7 +504,8 @@ class Reins_Attention6(nn.Module):
     def f(self,B):
         return self.up_proj(self.gelu(self.down_proj(B)))
 
-        
+    def get_attention(self):
+        return self.attn
     def get_tokens(self, layer: int) -> Tensor:
         if self.connect_with_hq_token:
             B = self.B[layer]
@@ -518,6 +523,7 @@ class Reins_Attention6(nn.Module):
 
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True,evp_feature=None) -> torch.Tensor:
+        
         assert layer >= 0 or layer < self.num_layers , "layer should be in range of 0 to num_layers"
         if batch_first:
             # H*W,B,C
@@ -534,6 +540,7 @@ class Reins_Attention6(nn.Module):
             evp_feature
         )
         delta_feat = delta_feat * self.scale
+        # print(f"scale_{layer}:{self.scale}")
         x = x + delta_feat
         if has_cls_token:
             x = torch.cat([cls_token, x], dim=0)
@@ -565,6 +572,7 @@ class Reins_Attention7(Reins_Attention6):
                 B = torch.concat([self.test_token[layer]]*self.r,dim=0)
 
             tokens = self.f(self.A[0] @ B)
+
         return tokens
 
 class Reins_Attention8(Reins_Attention6):
@@ -629,7 +637,10 @@ class Local_Enforcement(nn.Module):
             out_features=int(self.embed_dims)
         )
         self.scale = nn.Parameter(torch.tensor(0.1),requires_grad=True)
-        self.token = nn.Parameter(torch.zeros((1,int(self.embed_dims*self.embed_dims_ratio))),requires_grad=True)
+        if self.connect_hq_token:
+            self.hq_token = nn.Parameter(torch.zeros((1,int(self.embed_dims*self.embed_dims_ratio))),requires_grad=True)
+        else:
+            self.token = nn.Parameter(torch.zeros((1,int(self.embed_dims*self.embed_dims_ratio))),requires_grad=True)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -685,7 +696,10 @@ class Local_Enforcement(nn.Module):
             cls_token, x = torch.tensor_split(x, [1], dim=0)
 
         # tokens = self.get_tokens(layer)
-        token = self.token
+        if self.connect_hq_token:
+            token = self.hq_token
+        else:
+            token = self.token
         down_proj = getattr(self, f"down_proj_{layer}")
         # if self.connect_hq_token:
         #     delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))

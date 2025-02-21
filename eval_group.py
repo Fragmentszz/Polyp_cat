@@ -11,7 +11,7 @@ if __name__ == '__main__':
     # model_configs = ['cat-sam/cat_sam/config/model/6_1.yaml','cat-sam/cat_sam/config/model/6_3.yaml',
     #                  'cat-sam/cat_sam/config/model/6_7.yaml','cat-sam/cat_sam/config/model/7_3.yaml',
     #                  'cat-sam/cat_sam/config/model/8_2.yaml']
-    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/2_7_7_0.yaml']
+    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/7_7_0.yaml']
     eval_dataset_config = '/applications/graduate_design/cat-sam/cat_sam/config/eval_dataset.yaml'
     test_datasets = ['CVC-300', 'CVC-ClinicDB', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'Kvasir']
     dataset_config = load_config(eval_dataset_config)
@@ -22,7 +22,7 @@ if __name__ == '__main__':
         model_name = model_config.split('/')[-1].split('.')[0]
         config = load_config(model_config)
         model = build_model(config,device)
-       
+        model.eval()
         save_root = f'{root}/{model_name}'
         if not os.path.exists(save_root):
                 os.makedirs(save_root)
@@ -70,7 +70,7 @@ if __name__ == '__main__':
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
 
-            print(dl)
+            print("test_token")
             test_token(dl,model,device,save_path=save_path)
             # dice,gd,iou = test_token(dl,model,device,save_path=save_path)
             # logging.info(f'Mean val dice: {dice}')
