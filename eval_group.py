@@ -11,7 +11,7 @@ if __name__ == '__main__':
     # model_configs = ['cat-sam/cat_sam/config/model/6_1.yaml','cat-sam/cat_sam/config/model/6_3.yaml',
     #                  'cat-sam/cat_sam/config/model/6_7.yaml','cat-sam/cat_sam/config/model/7_3.yaml',
     #                  'cat-sam/cat_sam/config/model/8_2.yaml']
-    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/7_7_0.yaml']
+    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/7_2.yaml']
     eval_dataset_config = '/applications/graduate_design/cat-sam/cat_sam/config/eval_dataset.yaml'
     test_datasets = ['CVC-300', 'CVC-ClinicDB', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'Kvasir']
     dataset_config = load_config(eval_dataset_config)
@@ -57,11 +57,11 @@ if __name__ == '__main__':
         #     if not os.path.exists(save_path):
         #         os.makedirs(save_path)
 
-        #     print(dl)
-        #     dice,gd,iou = test_save(dl,model,device,save_path=save_path)
-        #     logging.info(f'Mean val dice: {dice}')
-        #     logging.info(f'Mean val gd: {gd}')
-        #     logging.info(f'Mean val iou: {iou}')
+            # print(dl)
+            # dice,gd,iou = test_save(dl,model,device,save_path=save_path)
+            # logging.info(f'Mean val dice: {dice}')
+            # logging.info(f'Mean val gd: {gd}')
+            # logging.info(f'Mean val iou: {iou}')
         for dl,dataset in zip(dataloaders,test_datasets):
             print(f'Testing on {dataset} dataset...')
             logging.info(f'Testing on {dataset} dataset...')

@@ -46,6 +46,8 @@ def change_rein_cfg(model_type,rein_cfg):
     res['patch_size'] = parm_dic[model_type]['patch_size']
     # res['global_attn_indexes'] = parm_dic[model_type]['global_attn_indexes']
     res['num_layers'] = len(parm_dic[model_type]['global_attn_indexes'])
+    if res.get('global_block',None) is None:
+        res['global_block'] = True
     return res
     
 build_sam = build_sam_vit_h

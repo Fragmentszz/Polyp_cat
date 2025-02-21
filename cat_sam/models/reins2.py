@@ -542,6 +542,8 @@ class Reins_Attention6(nn.Module):
         delta_feat = delta_feat * self.scale
         # print(f"scale_{layer}:{self.scale}")
         x = x + delta_feat
+        # print(delta_feat.max()*self.scale,delta_feat.min()*self.scale)
+        # print(x.max(),x.min())
         if has_cls_token:
             x = torch.cat([cls_token, x], dim=0)
         if batch_first:
@@ -557,6 +559,7 @@ class Reins_Attention7(Reins_Attention6):
             embed_dims,num_layers,patch_size,token_length,embed_dims_ratio,use_softmax,hq_token,scale_init,zero_mlp_delta_f,connect_with_hq_token=connect_hq_token
             ,c_hq_num=c_hq_num
         )
+        print(self.c_hq_num)
         print("????",self.embed_dims_ratio)
 
     def get_tokens(self, layer: int) -> Tensor:

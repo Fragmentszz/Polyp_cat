@@ -90,23 +90,22 @@ def main_worker(worker_id, worker_args):
     if isinstance(worker_id, str):
         worker_id = int(worker_id)
     
-    
     model_config = load_config(worker_args.model_config)
     dataset_config = load_config(worker_args.dataset_config)
     if not os.path.exists(worker_args.exp_dir):
         os.mkdir(worker_args.exp_dir)
     print(model_config)
     reins_config = model_config['model']['reins_config']
-    
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     exp_path = join(
-        worker_args.exp_dir,
-        f"{reins_config['rein_type']}{'_evp_feature' if reins_config['if_evp_feature'] else ''}_{'4+1_layer' if reins_config['local_block'] else '4_layer'}{'_connect_hq_token' if reins_config['connect_hq_token'] else ''}"
-
-    )
+            worker_args.exp_dir,
+            f"{current_time}",
+    ) 
     os.makedirs(exp_path, exist_ok=True)
     logging.basicConfig(filename=os.path.join(exp_path,'log.log'), format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
                     level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
-    logging.info(f"{reins_config['rein_type']}{'_evp_feature' if reins_config['if_evp_feature'] else ''}_{'4+1_layer' if reins_config['local_block'] else '4_layer'}{'_connect_hq_token' if reins_config['connect_hq_token'] else ''}")
+    
+    
     logging.info("Config")
     logging.info(f"Args:{model_config['model']}")
     gpu_num = len(worker_args.used_gpu)
@@ -115,15 +114,13 @@ def main_worker(worker_id, worker_args):
     local_rank = base_rank * gpu_num + worker_id
     if gpu_num > 1:
         dist.init_process_group(backend='nccl', init_method=worker_args.dist_url,
-                                world_size=world_size, rank=local_rank)
+                                    world_size=world_size, rank=local_rank)
 
     device = torch.device(f"cuda:{worker_id}")
     torch.cuda.set_device(device)
 
 
-    model = build_model(model_config,device,local_rank)
-    
-    
+    model = build_model(model_config,device,local_rank)    
     model.train()
 
 
