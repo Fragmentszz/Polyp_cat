@@ -435,23 +435,26 @@ class MyCATSAMAImageEncoder5(CATSAMAImageEncoder):
         # 
         self.embed_dims = 1024
         image_encoder_depth = len(self.sam_img_encoder.blocks)
-        
+        self.reins = None
         self.rein_unenabled_layers = []
         for i in range(image_encoder_depth):
             if i not in self.rein_enabled_layers:
                 self.rein_unenabled_layers.append(i)
+        print(self.rein_unenabled_layers)
+        if type(reins_cfg['local_block']) == str:
+            self.if_local_block = reins_cfg['local_block'] == 'True'
+        else:
+            self.if_local_block = reins_cfg['local_block']
+        if type(reins_cfg['if_evp_feature']) == str:
+            self.if_evp_feature = reins_cfg['if_evp_feature'] == 'True'
+        else:
+            self.if_evp_feature = reins_cfg['if_evp_feature']
         self.reins_num_layers = len(self.rein_enabled_layers)
         if reins_cfg['global_block']:
             reins_cfg['num_layers'] = len(self.rein_enabled_layers)
             reins_cfg['hq_token'] = hq_token
-            if type(reins_cfg['if_evp_feature']) == str:
-                self.if_evp_feature = reins_cfg['if_evp_feature'] == 'True'
-            else:
-                self.if_evp_feature = reins_cfg['if_evp_feature']
-            if type(reins_cfg['local_block']) == str:
-                self.if_local_block = reins_cfg['local_block'] == 'True'
-            else:
-                self.if_local_block = reins_cfg['local_block']
+            
+            
             # modified 0.25 -> 0.1
             self.EVP2 = EVP(img_size=self.sam_img_encoder.img_size,patch_size=self.sam_img_encoder.patch_embed.proj.kernel_size[0],
                             embed_dim=reins_cfg['embed_dims'],freq_nums=0.25)

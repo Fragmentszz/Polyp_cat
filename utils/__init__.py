@@ -131,37 +131,39 @@ def test_save(test_dataloader,model,device,save_path=None,save_func=get_dif):
                         
                     else:
                         diff = save_func(gt,res)
-                        attn = model.image_encoder.reins.get_attention().detach().cpu().numpy()
-                        attn = attn.squeeze()
+                        if model.image_encoder.reins is not None:
+                            
+                            attn = model.image_encoder.reins.get_attention().detach().cpu().numpy()
+                            attn = attn.squeeze()
+                            
+                            topk_lie = 10
+                            tmp = attn.sum(axis=0)
+                            lie = tmp.argsort()[-topk_lie:][::-1]
+                            
+                            # print(lie)
+                            
                         
-                        topk_lie = 10
-                        tmp = attn.sum(axis=0)
-                        lie = tmp.argsort()[-topk_lie:][::-1]
-                        
-                        print(lie)
-                        
-                       
-                        
-                        lies.append(lie)
-                        
-                        
-                        # 随机挑选10行
-                        attn = attn[random_choose]
-                        
-                        attn = attn.squeeze()
-                        plt.figure(figsize=(20, 20))
-                        sns.heatmap(attn, annot=True, cmap='viridis', linewidths=0.5, linecolor='black')
-                        # plt.show()
-                        # save
-                        plt.savefig(os.path.join(save_path, str(name) + f"_{final_dice}_{final_gd}_{final_iou}_heatmap.png"))
-                        plt.close()    
-                        atten_list.append(attn)
+                            
+                            lies.append(lie)
+                            
+                            
+                            # 随机挑选10行
+                            attn = attn[random_choose]
+                            
+                            attn = attn.squeeze()
+                            plt.figure(figsize=(20, 20))
+                            sns.heatmap(attn, annot=True, cmap='viridis', linewidths=0.5, linecolor='black')
+                            # plt.show()
+                            # save
+                            plt.savefig(os.path.join(save_path, str(name) + f"_{final_dice}_{final_gd}_{final_iou}_heatmap.png"))
+                            plt.close()    
+                            atten_list.append(attn)
                     
                     diff.save(os.path.join(save_path, str(name)+f"_{final_dice}_{final_gd}_{final_iou}.png"))
                     
         # 
-        if save_func != get_res:
-            print(np.concatenate(lies))
+        # if save_func != get_res:
+        #     print(np.concatenate(lies))
         return sum(batch_dice) / len(batch_dice),sum(batch_gd) / len(batch_gd),sum(batch_iou) / len(batch_iou)
 
 def batch_to_cuda(batch, device):

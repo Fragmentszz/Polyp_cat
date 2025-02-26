@@ -70,10 +70,30 @@ class BaseCATSAM(nn.Module):
             hq_token_weight: torch.Tensor = None,
             return_all_hq_masks: bool = False
     ):
+        
+        
+        sparse_embeddings_list, dense_embeddings_list = [], []    
+        if image_embeddings is None and interm_embeddings is None:
+            batch_size = len(imgs)
+        else:
+            batch_size = len(image_embeddings)
+        points, boxes, masks = self.convert_raw_prompts_to_triple(
+            point_coords=point_coords, point_labels=point_labels,
+            box_coords=box_coords, noisy_masks=noisy_masks, batch_size=batch_size
+            )
+        for batch_idx in range(batch_size):
+            sparse_embeddings, dense_embeddings = self.prompt_encoder(
+                points=points[batch_idx], boxes=boxes[batch_idx], masks=masks[batch_idx],
+            )
+            # print(sparse_embeddings.shape,dense_embeddings.shape)
+            sparse_embeddings_list.append(sparse_embeddings)
+            dense_embeddings_list.append(dense_embeddings)
+        
+        
+        
         if (image_embeddings is None) ^ (interm_embeddings is None):
             raise RuntimeError("Please give image_embeddings and interm_embeddings at the same time for inference!")
-        # print("image_embeddings:",image_embeddings)
-        # print("interm_embeddings:",interm_embeddings)
+
         if image_embeddings is None and interm_embeddings is None:
             # record the original image size for later mask resizing
             ori_img_size = [(imgs[i].shape[-2], imgs[i].shape[-1]) for i in range(len(imgs))]
@@ -86,22 +106,12 @@ class BaseCATSAM(nn.Module):
             # hq_token_weight = self.image_encoder.get_hq_token()
 
         elif ori_img_size is None:
+            batch_size = len(image_embeddings)
             raise RuntimeError("Please also specify ori_img_size to forward() during the inference!")
 
-        batch_size = len(image_embeddings)
-        points, boxes, masks = self.convert_raw_prompts_to_triple(
-            point_coords=point_coords, point_labels=point_labels,
-            box_coords=box_coords, noisy_masks=noisy_masks, batch_size=batch_size
-        )
-
-        sparse_embeddings_list, dense_embeddings_list = [], []
-        for batch_idx in range(batch_size):
-            sparse_embeddings, dense_embeddings = self.prompt_encoder(
-                points=points[batch_idx], boxes=boxes[batch_idx], masks=masks[batch_idx],
-            )
-            sparse_embeddings_list.append(sparse_embeddings)
-            dense_embeddings_list.append(dense_embeddings)
         
+        
+
         # print("hq_token_weight:",hq_token_weight)
         masks_sam, masks_hq = self.mask_decoder(
             image_embeddings=image_embeddings,

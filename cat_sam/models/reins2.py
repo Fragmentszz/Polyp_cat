@@ -468,11 +468,11 @@ class Reins_Attention6(nn.Module):
             return self.mlp_token2feat, self.mlp_delta_f
     
     def forward_delta_feat(self, feats: Tensor, tokens: Tensor, layers: int,evp_feature=None) -> Tensor:
+        # print(evp_feature)
         if evp_feature is not None:
             # n,b,c
             # print(feats.shape)
             # b, m, c -> b, c, m
-            evp_feature = torch.zeros_like(evp_feature)
             token_with_evp = (evp_feature + tokens).permute(0,2,1)
             attn = torch.bmm(feats.permute(1,0,2), token_with_evp).permute(1,0,2)
             
@@ -483,13 +483,7 @@ class Reins_Attention6(nn.Module):
             
         else:
             attn = torch.einsum("nbc,mc->nbm", feats, tokens)
-        
-        
-        
-        
-        
         mlp_token2feat, mlp_delta_f = self.get_mlps(layers)
-
         if self.use_softmax:
             attn = attn * (self.embed_dims**-0.5)
             attn = F.softmax(attn, dim=-1)
@@ -542,8 +536,6 @@ class Reins_Attention6(nn.Module):
         delta_feat = delta_feat * self.scale
         # print(f"scale_{layer}:{self.scale}")
         x = x + delta_feat
-        # print(delta_feat.max()*self.scale,delta_feat.min()*self.scale)
-        # print(x.max(),x.min())
         if has_cls_token:
             x = torch.cat([cls_token, x], dim=0)
         if batch_first:
@@ -665,30 +657,6 @@ class Local_Enforcement(nn.Module):
 
 
 
-    def forward_delta_feat(self, feats: Tensor, layers: int) -> Tensor:
-        return None
-    
-    # def f(self,B):
-    #     return self.up_proj(self.gelu(self.down_proj(B)))
-
-        
-    # def get_tokens(self, layer: int) -> Tensor:
-    #     if self.connect_with_hq_token:
-    #         B = self.B[layer]
-    #         B = torch.concat([self.hq_token]*self.c_hq_num+[B],dim=0)
-    #         B = self.f(B)
-    #         tokens = self.A[0] @ B
-    #     else:
-    #         if layer == self.num_layers:
-    #             B = torch.concat([self.hq_token]*self.r,dim=0)
-    #         else:
-    #             B = self.B[layer]
-    #         B = self.f(B)
-    #         tokens = self.A[0] @ B
-    #     return tokens
-
-    # def get_delta_feat(self,layer:int,batch_first=False, has_cls_token=True) -> torch.Tensor:
-        
     
     def forward(self,x: torch.Tensor,layer:int,batch_first=False, has_cls_token=True) -> torch.Tensor:
         assert layer >= 0 or layer < self.num_layers , "layer should be in range of 0 to num_layers"
@@ -704,14 +672,8 @@ class Local_Enforcement(nn.Module):
         else:
             token = self.token
         down_proj = getattr(self, f"down_proj_{layer}")
-        # if self.connect_hq_token:
-        #     delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
-        # else:
-        #     delta_feat = self.up_proj(self.gelu((down_proj(x))))
         delta_feat = self.up_proj(self.gelu((down_proj(x) + token)))
         x = delta_feat * self.scale + x
-        
-        # x = x + delta_feat
         if has_cls_token:
             x = torch.cat([cls_token, x], dim=0)
         if batch_first:
