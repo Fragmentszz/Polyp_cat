@@ -11,8 +11,8 @@ if __name__ == '__main__':
     # model_configs = ['cat-sam/cat_sam/config/model/6_1.yaml','cat-sam/cat_sam/config/model/6_3.yaml',
     #                  'cat-sam/cat_sam/config/model/6_7.yaml','cat-sam/cat_sam/config/model/7_3.yaml',
     #                  'cat-sam/cat_sam/config/model/8_2.yaml']
-    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/128_7_4.yaml']
-    eval_dataset_config = '/applications/graduate_design/cat-sam/cat_sam/config/eval_dataset.yaml'
+    model_configs = ['/applications/graduate_design/cat-sam/cat_sam/config/model/128_hfc_0.001.yaml']
+    eval_dataset_config = '/applications/graduate_design/cat-sam/cat_sam/config/plot_dataset.yaml'
     test_datasets = ['CVC-300', 'CVC-ClinicDB', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'Kvasir']
     dataset_config = load_config(eval_dataset_config)
     dataloaders = build_dataloader_eval(dataset_config)

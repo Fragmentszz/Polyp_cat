@@ -3,8 +3,8 @@
 # --data_dir=/remote-home/dataset/polyp/test --num_workers=4 --sam_type=rein_vit_l --cat_type=cat-a --dataset=divide --batch_size=1 --ckpt_path=/applications/graduate_design/model/finetuned/cat_sam/Reins_Attention6__rein_vit_l_cat-a_16shot/best_model.pth --rein_type=Reins_Attention6 --save_path=/remote-home/result
 
 dataset:
-  data_dir: /root/autodl-fs/dataset/polyp/plot
+  data_dir: /root/autodl-fs/dataset/polyp/visualize
   num_workers: 4
   batch_size: 1
-  dataset: plot
+  dataset: CVC-300
   save_path: /remote-home/result

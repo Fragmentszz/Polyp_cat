@@ -5,9 +5,7 @@ from torch import nn, Tensor
 import torch
 import math
 import torch.nn.functional as F
-from cat_sam.models.module_lib import PatchEmbed2
-import collections.abc as container_abcs
-from itertools import repeat
+
 
 class Base_Edge_Adapter(nn.Module):
     def __init__(self, embed_dims: int,  num_layers: int, patch_size:int ,token_length:int=100,embed_dims_ratio:int=1,use_softmax: bool = True,token_dim:int=256,

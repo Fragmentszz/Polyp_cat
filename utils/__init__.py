@@ -136,6 +136,8 @@ def test_save(test_dataloader,model,device,save_path=None,save_func=get_dif):
                             attn = model.image_encoder.reins.get_attention().detach().cpu().numpy()
                             attn = attn.squeeze()
                             
+                            # print(attn.sum(axis=0))
+                            
                             topk_lie = 10
                             tmp = attn.sum(axis=0)
                             lie = tmp.argsort()[-topk_lie:][::-1]

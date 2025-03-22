@@ -531,7 +531,11 @@ class MyCATSAMAImageEncoder5(CATSAMAImageEncoder):
 
             if blk.window_size == 0:
                 interm_embeddings.append(x)
-
+        # x_numpy = x.detach().cpu().numpy()
+        # # save
+        # import numpy as np
+        # np.save('x.npy',x_numpy)
         x = self.sam_img_encoder.neck(x.permute(0, 3, 1, 2))
+        
         return x, interm_embeddings
 

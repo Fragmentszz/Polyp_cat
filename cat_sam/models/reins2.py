@@ -9,6 +9,12 @@ from cat_sam.models.module_lib import PatchEmbed2
 import collections.abc as container_abcs
 from itertools import repeat
 
+def init_conv2d(m):
+    fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+    fan_out //= m.groups
+    m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+    return m
+
 def to_2tuple(x):
     if isinstance(x, container_abcs.Iterable):
         return x
@@ -32,7 +38,7 @@ class PatchEmbed2(nn.Module):
 
         self.proj = nn.Conv2d(in_chans, embed_dim,
                               kernel_size=patch_size, stride=patch_size)
-
+        init_conv2d(self.proj)
     def forward(self, x):
         B, C, H, W = x.shape
         assert H == self.img_size[0] and W == self.img_size[1], \

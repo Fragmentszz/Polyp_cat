@@ -116,7 +116,7 @@ def build_dataloader_eval(config):
             batch_size=config['dataset']['batch_size'], num_workers=config['dataset']['num_workers'],
             collate_fn=test_dataset.collate_fn
         )
-        return test_dataloader
+        return [test_dataloader]
         
     
 
