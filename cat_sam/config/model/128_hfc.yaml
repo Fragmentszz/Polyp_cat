@@ -20,4 +20,4 @@ model:
     zero_mlp_delta_f: False
     global_block: True
   # ckpt_path: /applications/graduate_design/model/finetuned/cat_sam/7_3/best_model.pth
-  ckpt_path: /applications/graduate_design/model/finetuned/cat_sam/128_hfc/best_model.pth
+  ckpt_path: 
